@@ -1,0 +1,13 @@
+name: Backend CI
+on: [pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install -r backend/requirements.txt
+      - run: flake8 backend/          # linting
+      - run: pytest backend/tests/    # unit tests
