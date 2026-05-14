@@ -1,0 +1,6 @@
+ultralytics
+numpy
+scipy
+opencv-python
+emcee
+pytest
