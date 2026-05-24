@@ -1,5 +1,17 @@
+import sys
+import os
+from pathlib import Path
 from dotenv import load_dotenv
+
 load_dotenv()
+
+# Add physics_engine to path from PYTHONPATH env var or fall back to relative
+pythonpath = os.getenv("PYTHONPATH")
+if pythonpath:
+    sys.path.insert(0, pythonpath)
+else:
+    # fallback: physics_engine is one level up from backend/
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
