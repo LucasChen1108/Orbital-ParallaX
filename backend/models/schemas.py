@@ -66,3 +66,4 @@ class AnalysisResponse(BaseModel):
     status: str
     result: Optional[PhysicsResult] = None
     error: Optional[str] = None
+    

@@ -1,8 +1,3 @@
-"""
-video_service.py — file I/O only.
-No physics, no CV. Just save/load videos from disk.
-"""
-
 import cv2
 import uuid
 from pathlib import Path
@@ -13,8 +8,8 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 def save_video(file_bytes: bytes, filename: str) -> dict:
     video_id = str(uuid.uuid4())
-    ext      = Path(filename).suffix or ".mp4"
-    dest     = UPLOAD_DIR / f"{video_id}{ext}"
+    ext = Path(filename).suffix or ".mp4"
+    dest = UPLOAD_DIR / f"{video_id}{ext}"
     dest.write_bytes(file_bytes)
 
     cap = cv2.VideoCapture(str(dest))
@@ -22,21 +17,21 @@ def save_video(file_bytes: bytes, filename: str) -> dict:
         dest.unlink(missing_ok=True)
         raise ValueError("Could not open video — unsupported format?")
 
-    fps          = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    width        = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height       = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     cap.release()
 
     return {
-        "video_id":         video_id,
-        "filename":         filename,
+        "video_id": video_id,
+        "filename": filename,
         "duration_seconds": round(total_frames / fps, 2),
-        "total_frames":     total_frames,
-        "fps":              fps,
-        "width":            width,
-        "height":           height,
-        "message":          "Video uploaded successfully.",
+        "total_frames": total_frames,
+        "fps": fps,
+        "width": width,
+        "height": height,
+        "message": "Video uploaded successfully.",
     }
 
 

@@ -1,12 +1,6 @@
-"""
-routers/video.py — HTTP layer only.
-Validates input, calls services + physics_engine, returns responses.
-"""
-
 import sys
 from pathlib import Path
 
-# physics_engine lives at repo root — add to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
@@ -24,7 +18,7 @@ from physics_engine import (
 router = APIRouter()
 
 ALLOWED_TYPES = {"video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"}
-MAX_SIZE_MB   = 200
+MAX_SIZE_MB = 200
 
 
 @router.post("/upload", response_model=UploadResponse)
@@ -61,8 +55,10 @@ def analyse_video(req: AnalysisRequest):
         raise HTTPException(404, str(e))
 
     try:
-        c            = req.calibration
-        px_per_metre = compute_px_per_metre(c.x1, c.y1, c.x2, c.y2, c.real_world_distance_m)
+        c = req.calibration
+        px_per_metre = compute_px_per_metre(
+            c.x1, c.y1, c.x2, c.y2, c.real_world_distance_m
+        )
     except ValueError as e:
         raise HTTPException(422, f"Calibration error: {e}")
 
@@ -78,7 +74,10 @@ def analyse_video(req: AnalysisRequest):
         return AnalysisResponse(
             video_id=req.video_id,
             status="failed",
-            error=f"Ball detected in only {len(detections)} frames (need ≥5). Try re-clicking the ball or widening the frame range.",
+            error=(
+                f"Ball detected in only {len(detections)} frames (need ≥5). "
+                "Try re-clicking the ball or widening the frame range."
+            ),
         )
 
     fps = get_video_fps(path)
