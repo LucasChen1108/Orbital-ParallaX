@@ -1,9 +1,11 @@
 import sys
 from pathlib import Path
 
+import cv2
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Response
 from models.schemas import (
     UploadResponse,
     SampleColourRequest, SampleColourResponse,
@@ -92,6 +94,27 @@ def analyse_video(req: AnalysisRequest):
         result=PhysicsResult(**data),
     )
 
+@router.get("/frame/{video_id}/{frame_index}")
+def get_frame(video_id: str, frame_index: int):
+    """
+    Extract a single frame from the video and return it as a JPEG.
+    Used by BallPicker and CalibrationPicker canvas components.
+    """
+    try:
+        path = get_video_path(video_id)
+    except FileNotFoundError:
+        raise HTTPException(404, "Video not found.")
+
+    cap = cv2.VideoCapture(str(path))
+    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+    ret, frame = cap.read()
+    cap.release()
+
+    if not ret:
+        raise HTTPException(422, f"Could not read frame {frame_index}.")
+
+    _, buffer = cv2.imencode(".jpg", frame)
+    return Response(content=buffer.tobytes(), media_type="image/jpeg")
 
 @router.get("/status/{video_id}")
 def video_status(video_id: str):
