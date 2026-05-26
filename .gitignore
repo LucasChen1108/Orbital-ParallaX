@@ -230,3 +230,7 @@ backend/uploads/
 
 # Node modules
 node_modules/
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+frontend/.next/
