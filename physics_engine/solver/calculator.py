@@ -98,7 +98,8 @@ def compute_physics(
     ay = np.gradient(vy, dt)
 
     # Scalar summaries
-    estimated_gravity = float(np.median(np.abs(ay)))
+    coeffs = np.polyfit(timestamps, y_smooth, 2)
+    estimated_gravity = float(abs(-2 * coeffs[0]))
     initial_speed     = float(math.sqrt(float(vx[0])**2 + float(vy[0])**2))
     launch_angle_deg  = float(math.degrees(math.atan2(float(vy[0]), float(vx[0]))))
 
