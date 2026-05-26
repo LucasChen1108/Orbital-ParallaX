@@ -94,6 +94,7 @@ def analyse_video(req: AnalysisRequest):
         result=PhysicsResult(**data),
     )
 
+
 @router.get("/frame/{video_id}/{frame_index}")
 def get_frame(video_id: str, frame_index: int):
     """
@@ -115,6 +116,7 @@ def get_frame(video_id: str, frame_index: int):
 
     _, buffer = cv2.imencode(".jpg", frame)
     return Response(content=buffer.tobytes(), media_type="image/jpeg")
+
 
 @router.get("/status/{video_id}")
 def video_status(video_id: str):
