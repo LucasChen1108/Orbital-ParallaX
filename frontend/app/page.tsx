@@ -80,6 +80,7 @@ export default function Home() {
       {step >= 2 && uploadData && (
         <>
           <hr />
+          <p>Detected FPS: {uploadData.fps}</p> 
           <IntervalSlider
             totalFrames={uploadData.total_frames}
             fps={uploadData.fps}
