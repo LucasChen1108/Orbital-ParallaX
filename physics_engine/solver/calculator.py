@@ -156,7 +156,8 @@ def compute_physics_with_drag(
 
     def ode(state, t, g, b):
         _, _, vx, vy = state
-        return [vx, vy, -b * vx, -g - b * vy]
+        speed = np.sqrt(vx**2 + vy**2)
+        return [vx, vy, -b * speed * vx, -g - b * speed * vy]
 
     def simulate(params):
         g, b, x0, y0, vx0, vy0 = params
@@ -170,19 +171,30 @@ def compute_physics_with_drag(
             return np.full(len(timestamps) * 2, 1e6)
 
     observed = np.concatenate([x_smooth, y_smooth])
-
+    
     def residuals(params):
-        predicted = simulate(params)
-        return np.sum((predicted - observed) ** 2)
+        g, b, vx0, vy0 = params
+        state0 = [x0_fixed, y0_fixed, vx0, vy0]
+        try:
+            sol = odeint(ode, state0, timestamps, args=(g, b))
+            predicted = np.concatenate([sol[:, 0], sol[:, 1]])
+            return np.sum((predicted - observed) ** 2)
+        except Exception:
+            return 1e6
 
-    x0_guess = [9.81, 0.1, x_smooth[0], y_smooth[0], vx0_guess, vy0_guess]
-    bounds = [(5, 15), (0, 5), (None, None), (None, None), (None, None), (None, None)]
+    x0_fixed = float(x_smooth[0])
+    y0_fixed = float(y_smooth[0])
 
-    res = minimize(residuals, x0_guess, method="L-BFGS-B", bounds=bounds)
-    g_fit, b_fit, x0_fit, y0_fit, vx0_fit, vy0_fit = res.x
+    x0_guess = [9.81, 0.025, vx0_guess, vy0_guess]
+    bounds = [(5, 15), (0.01, 0.1), (None, None), (None, None)]
+
+    res = minimize(residuals, x0_guess, method="Nelder-Mead",
+               options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 5000})
+
+    g_fit, b_fit, vx0_fit, vy0_fit = res.x
 
     # Reconstruct full trajectory from fitted params
-    sol = odeint(ode, [x0_fit, y0_fit, vx0_fit, vy0_fit], timestamps, args=(g_fit, b_fit))
+    sol = odeint(ode, [x0_fixed, y0_fixed, vx0_fit, vy0_fit], timestamps, args=(g_fit, b_fit))
     x_fit = sol[:, 0]
     y_fit = sol[:, 1]
     vx_fit = sol[:, 2]
