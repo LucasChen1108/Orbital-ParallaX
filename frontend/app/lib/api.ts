@@ -36,7 +36,9 @@ export async function analyseVideo(
   frame_range: FrameRange,
   calibration: CalibrationPoints,
   hsv_lower: number[],
-  hsv_upper: number[]
+  hsv_upper: number[],
+  use_air_resistance: boolean = false,
+  method: "hsv" | "yolo" = "hsv"
 ): Promise<AnalysisResponse> {
   const res = await axios.post<AnalysisResponse>(`${BASE}/analyse`, {
     video_id,
@@ -44,6 +46,8 @@ export async function analyseVideo(
     calibration,
     hsv_lower,
     hsv_upper,
+    use_air_resistance,
+    method,
   });
   return res.data;
 }

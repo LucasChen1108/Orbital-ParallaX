@@ -23,6 +23,7 @@ export default function Home() {
   const [result, setResult] = useState<PhysicsResult | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [method, setMethod] = useState<"hsv" | "yolo">("hsv");
 
   function handleUploaded(data: UploadResponse) {
     setUploadData(data);
@@ -123,6 +124,30 @@ export default function Home() {
         <>
           <hr />
           <h2>Step 5 — Run Analysis</h2>
+
+          <div style={{ marginBottom: "8px" }}>
+            <p>Tracking method:</p>
+            <label>
+              <input
+                type="radio"
+                name="method"
+                checked={method === "hsv"}
+                onChange={() => setMethod("hsv")}
+              />
+              {" "}Colour (HSV)
+            </label>
+            {"  "}
+            <label>
+              <input
+                type="radio"
+                name="method"
+                checked={method === "yolo"}
+                onChange={() => setMethod("yolo")}
+              />
+              {" "}YOLOv8
+            </label>
+          </div>
+          
           <button onClick={handleAnalyse} disabled={analysing}>
             {analysing ? "Analysing..." : "Analyse Video"}
           </button>

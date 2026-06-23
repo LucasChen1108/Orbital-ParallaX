@@ -45,6 +45,8 @@ class AnalysisRequest(BaseModel):
     calibration: CalibrationPoints
     hsv_lower: list[int]
     hsv_upper: list[int]
+    use_air_resistance: bool = False
+    method: str = "hsv"   # "hsv" | "yolo"
 
 
 class PhysicsResult(BaseModel):

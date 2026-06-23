@@ -70,6 +70,7 @@ def analyse_video(req: AnalysisRequest):
         req.frame_range.end_frame,
         hsv_lower=req.hsv_lower,
         hsv_upper=req.hsv_upper,
+        method=req.method,
     )
 
     if len(detections) < 5:
