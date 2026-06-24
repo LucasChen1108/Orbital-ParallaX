@@ -11,7 +11,9 @@ import {
   SampleColourResponse,
   CalibrationPoints,
   PhysicsResult,
+  AnalysisResponse,
 } from "./types/analysis";
+import TrajectoryPlot from "./components/TrajectoryPlot";
 
 export default function Home() {
   const [step, setStep] = useState(1);
@@ -24,11 +26,24 @@ export default function Home() {
   const [analysing, setAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<"hsv" | "yolo">("hsv");
+  const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
 
   function handleUploaded(data: UploadResponse) {
     setUploadData(data);
     setEndFrame(data.total_frames - 1);
     setStep(2);
+  }
+
+  // After the interval is confirmed, branch by method:
+  //   hsv  → Step 3 (pick ball colour) → Step 4 (calibration)
+  //   yolo → skip Step 3, jump straight to Step 4 (calibration)
+  function handleConfirmInterval() {
+    if (method === "yolo") {
+      setColourData(null);   // no colour needed for YOLO
+      setStep(4);
+    } else {
+      setStep(3);
+    }
   }
 
   function handleColourSampled(data: SampleColourResponse) {
@@ -42,7 +57,10 @@ export default function Home() {
   }
 
   async function handleAnalyse() {
-    if (!uploadData || !colourData || !calibration) return;
+    if (!uploadData || !calibration) return;
+    // HSV needs sampled colour; YOLO does not.
+    if (method === "hsv" && !colourData) return;
+
     setAnalysing(true);
     setError(null);
     try {
@@ -50,11 +68,14 @@ export default function Home() {
         uploadData.video_id,
         { start_frame: startFrame, end_frame: endFrame },
         calibration,
-        colourData.hsv_lower,
-        colourData.hsv_upper
+        colourData?.hsv_lower ?? [],
+        colourData?.hsv_upper ?? [],
+        false,
+        method,
       );
       if (res.status === "success" && res.result) {
         setResult(res.result);
+        setAnalysis(res);
         setStep(6);
       } else {
         setError(res.error ?? "Analysis failed.");
@@ -75,7 +96,7 @@ export default function Home() {
       {/* Step 1 */}
       <VideoUploader onUploaded={handleUploaded} />
 
-      {/* Step 2 */}
+      {/* Step 2 — interval + tracking method */}
       {step >= 2 && uploadData && (
         <>
           <hr />
@@ -87,12 +108,40 @@ export default function Home() {
             onStartChange={setStartFrame}
             onEndChange={setEndFrame}
           />
-          <button onClick={() => setStep(3)}>Confirm Interval →</button>
+
+          <div style={{ margin: "12px 0" }}>
+            <p>Tracking method:</p>
+            <label>
+              <input
+                type="radio"
+                name="method"
+                checked={method === "hsv"}
+                onChange={() => setMethod("hsv")}
+                disabled={step > 2}
+              />
+              {" "}Colour (HSV) — you click the ball
+            </label>
+            {"  "}
+            <label>
+              <input
+                type="radio"
+                name="method"
+                checked={method === "yolo"}
+                onChange={() => setMethod("yolo")}
+                disabled={step > 2}
+              />
+              {" "}YOLOv8 — automatic, no clicking
+            </label>
+          </div>
+
+          <button onClick={handleConfirmInterval} disabled={step > 2}>
+            Confirm Interval →
+          </button>
         </>
       )}
 
-      {/* Step 3 */}
-      {step >= 3 && uploadData && (
+      {/* Step 3 — only for HSV */}
+      {step >= 3 && method === "hsv" && uploadData && (
         <>
           <hr />
           <BallPicker
@@ -105,7 +154,7 @@ export default function Home() {
         </>
       )}
 
-      {/* Step 4 */}
+      {/* Step 4 — calibration */}
       {step >= 4 && uploadData && (
         <>
           <hr />
@@ -119,35 +168,13 @@ export default function Home() {
         </>
       )}
 
-      {/* Step 5 — Analyse button */}
+      {/* Step 5 — Analyse */}
       {step >= 5 && (
         <>
           <hr />
           <h2>Step 5 — Run Analysis</h2>
+          <p>Method: {method === "yolo" ? "YOLOv8" : "Colour (HSV)"}</p>
 
-          <div style={{ marginBottom: "8px" }}>
-            <p>Tracking method:</p>
-            <label>
-              <input
-                type="radio"
-                name="method"
-                checked={method === "hsv"}
-                onChange={() => setMethod("hsv")}
-              />
-              {" "}Colour (HSV)
-            </label>
-            {"  "}
-            <label>
-              <input
-                type="radio"
-                name="method"
-                checked={method === "yolo"}
-                onChange={() => setMethod("yolo")}
-              />
-              {" "}YOLOv8
-            </label>
-          </div>
-          
           <button onClick={handleAnalyse} disabled={analysing}>
             {analysing ? "Analysing..." : "Analyse Video"}
           </button>
@@ -155,11 +182,33 @@ export default function Home() {
         </>
       )}
 
-      {/* Step 6 — Results */}
-      {step >= 6 && result && (
+      {step >= 6 && analysis && (
         <>
           <hr />
-          <ResultsPanel result={result} />
+          {step >= 6 && result && <><hr /><ResultsPanel result={result} /></>}
+          <h3>Tracking result</h3>
+          <p>
+            Detected {analysis.detected_frames}/{analysis.total_frames} frames
+            ({analysis.detection_rate}%) — {method === "yolo" ? "YOLOv8" : "HSV"}
+          </p>
+
+          {/* option 2: video */}
+          {analysis.has_overlay && (
+            <video
+              src={`http://localhost:8000/api/v1/video/overlay/${analysis.video_id}`}
+              controls
+              style={{ maxWidth: "100%" }}
+            />
+          )}
+
+          {/* option 3: scatter plot */}
+          {analysis.detections && (
+            <TrajectoryPlot
+              detections={analysis.detections}
+              width={uploadData!.width}
+              height={uploadData!.height}
+            />
+          )}
         </>
       )}
     </main>

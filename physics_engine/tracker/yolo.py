@@ -14,7 +14,7 @@ from ultralytics import YOLO
 
 SPORTS_BALL_CLASS = 32          # COCO class id for "sports ball"
 YOLO_WEIGHTS      = "yolov8n.pt"  # nano model; bump to yolov8s/m if balls are missed
-YOLO_CONF         = 0.25        # confidence floor; lower → fewer misses, more noise
+YOLO_CONF         = 0.1        # confidence floor
 
 # Module-level lazy singleton — model is loaded once and reused.
 # NEVER construct YOLO() per frame or per call; that is unusably slow.

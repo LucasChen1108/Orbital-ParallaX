@@ -6,3 +6,4 @@ opencv-python-headless==4.9.0.80
 numpy>=2.1.0
 scipy>=1.14.0
 pydantic>=2.9.0
+imageio-ffmpeg>=0.5.1
