@@ -19,6 +19,7 @@ from services.video_service import (
 from physics_engine import (
     sample_ball_colour, track_ball,
     compute_px_per_metre, compute_physics,
+    compute_physics_with_drag,
 )
 
 router = APIRouter()
@@ -89,7 +90,10 @@ def analyse_video(req: AnalysisRequest):
 
     fps = get_video_fps(path)
     try:
-        data = compute_physics(detections, fps, px_per_metre)
+        if req.use_air_resistance:
+            data = compute_physics_with_drag(detections, fps, px_per_metre)
+        else:
+            data = compute_physics(detections, fps, px_per_metre)
     except ValueError as e:
         return AnalysisResponse(video_id=req.video_id, status="failed", error=str(e))
     
