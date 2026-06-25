@@ -45,7 +45,7 @@ class AnalysisRequest(BaseModel):
     calibration: CalibrationPoints
     hsv_lower: list[int]
     hsv_upper: list[int]
-    use_air_resistance: bool = False 
+    use_air_resistance: bool = False
 
 
 class PhysicsResult(BaseModel):
