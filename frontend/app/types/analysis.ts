@@ -8,18 +8,15 @@ export interface UploadResponse {
   height: number;
   message: string;
 }
-
 export interface SampleColourResponse {
   hsv_lower: number[];
   hsv_upper: number[];
   sampled_hsv: number[];
 }
-
 export interface FrameRange {
   start_frame: number;
   end_frame: number;
 }
-
 export interface CalibrationPoints {
   x1: number;
   y1: number;
@@ -27,7 +24,6 @@ export interface CalibrationPoints {
   y2: number;
   real_world_distance_m: number;
 }
-
 export interface PhysicsResult {
   timestamps: number[];
   x_positions_m: number[];
@@ -47,14 +43,12 @@ export interface PhysicsResult {
     y_positions_m: number[];
   };
 }
-
 export interface AnalysisRequest {
   video_id: string;
   frame_range: FrameRange;
   calibration: CalibrationPoints;
   use_air_resistance?: boolean;
 }
-
 export interface AnalysisResponse {
   video_id: string;
   status: string;

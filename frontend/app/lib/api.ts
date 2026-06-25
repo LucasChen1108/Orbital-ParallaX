@@ -6,10 +6,13 @@ import {
   CalibrationPoints,
   FrameRange,
 } from "../types/analysis";
+import { MOCK_UPLOAD, MOCK_SAMPLE_COLOUR, MOCK_ANALYSIS } from "./mockData";
 
+const USE_MOCK = false; // Set to true to use mock data instead of making API calls
 const BASE = "http://localhost:8000/api/v1/video";
 
 export async function uploadVideo(file: File): Promise<UploadResponse> {
+  if (USE_MOCK) return MOCK_UPLOAD;
   const form = new FormData();
   form.append("file", file);
   const res = await axios.post<UploadResponse>(`${BASE}/upload`, form);
@@ -22,6 +25,7 @@ export async function sampleColour(
   click_x: number,
   click_y: number
 ): Promise<SampleColourResponse> {
+  if (USE_MOCK) return MOCK_SAMPLE_COLOUR;
   const res = await axios.post<SampleColourResponse>(`${BASE}/sample-colour`, {
     video_id,
     frame_index,
@@ -39,6 +43,7 @@ export async function analyseVideo(
   hsv_upper: number[],
   use_air_resistance: boolean = false
 ): Promise<AnalysisResponse> {
+  if (USE_MOCK) return MOCK_ANALYSIS;
   const res = await axios.post<AnalysisResponse>(`${BASE}/analyse`, {
     video_id,
     frame_range,
