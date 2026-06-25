@@ -40,6 +40,19 @@ export interface PhysicsResult {
   initial_velocity_ms: number;
   launch_angle_deg: number;
   px_per_metre: number;
+  drag_coefficient?: number;
+  tracker_mode?: "hsv" | "yolo";
+  predicted_trajectory?: {
+    x_positions_m: number[];
+    y_positions_m: number[];
+  };
+}
+
+export interface AnalysisRequest {
+  video_id: string;
+  frame_range: FrameRange;
+  calibration: CalibrationPoints;
+  use_air_resistance?: boolean;
 }
 
 export interface AnalysisResponse {

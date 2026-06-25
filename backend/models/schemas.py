@@ -45,6 +45,7 @@ class AnalysisRequest(BaseModel):
     calibration: CalibrationPoints
     hsv_lower: list[int]
     hsv_upper: list[int]
+    use_air_resistance: bool = False
 
 
 class PhysicsResult(BaseModel):
@@ -59,6 +60,7 @@ class PhysicsResult(BaseModel):
     initial_velocity_ms: float
     launch_angle_deg: float
     px_per_metre: float
+    drag_coefficient: Optional[float] = None
 
 
 class AnalysisResponse(BaseModel):

@@ -98,7 +98,8 @@ def compute_physics(
     ay = np.gradient(vy, dt)
 
     # Scalar summaries
-    estimated_gravity = float(np.median(np.abs(ay)))
+    coeffs = np.polyfit(timestamps, y_smooth, 2)
+    estimated_gravity = float(abs(-2 * coeffs[0]))
     initial_speed     = float(math.sqrt(float(vx[0])**2 + float(vy[0])**2))
     launch_angle_deg  = float(math.degrees(math.atan2(float(vy[0]), float(vx[0]))))
 
@@ -114,6 +115,111 @@ def compute_physics(
         "initial_velocity_ms":   round(initial_speed, 3),
         "launch_angle_deg":      round(launch_angle_deg, 2),
         "px_per_metre":          round(px_per_metre, 4),
+    }
+
+def compute_physics_with_drag(
+    detections: list[tuple[int, float, float]],
+    fps: float,
+    px_per_metre: float,
+) -> dict:
+    """
+    Same as compute_physics but fits a drag model:
+        dvx/dt = -b * vx
+        dvy/dt = -g - b * vy
+    Uses scipy.optimize.minimize to find best-fit g and b.
+    """
+    from scipy.integrate import odeint
+    from scipy.optimize import minimize
+
+    if len(detections) < 5:
+        raise ValueError(
+            f"Only {len(detections)} frames detected — need at least 5."
+        )
+
+    frames = np.array([d[0] for d in detections], dtype=float)
+    px_x   = np.array([d[1] for d in detections], dtype=float)
+    px_y   = np.array([d[2] for d in detections], dtype=float)
+
+    x_m = px_x / px_per_metre
+    y_m = -(px_y / px_per_metre)
+    timestamps = (frames - frames[0]) / fps
+
+    # Smooth first (same as before)
+    window   = _safe_window(len(x_m))
+    x_smooth = savgol_filter(x_m, window_length=window, polyorder=3)
+    y_smooth = savgol_filter(y_m, window_length=window, polyorder=3)
+
+    # Initial guesses for vx0, vy0 from finite difference
+    dt = timestamps[1] - timestamps[0]
+    vx0_guess = (x_smooth[1] - x_smooth[0]) / dt
+    vy0_guess = (y_smooth[1] - y_smooth[0]) / dt
+
+    def ode(state, t, g, b):
+        _, _, vx, vy = state
+        speed = np.sqrt(vx**2 + vy**2)
+        return [vx, vy, -b * speed * vx, -g - b * speed * vy]
+
+    def simulate(params):
+        g, b, x0, y0, vx0, vy0 = params
+        if g < 0 or b < 0:
+            return np.full(len(timestamps) * 2, 1e6)
+        state0 = [x0, y0, vx0, vy0]
+        try:
+            sol = odeint(ode, state0, timestamps, args=(g, b))
+            return np.concatenate([sol[:, 0], sol[:, 1]])
+        except Exception:
+            return np.full(len(timestamps) * 2, 1e6)
+
+    observed = np.concatenate([x_smooth, y_smooth])
+    
+    def residuals(params):
+        g, b, vx0, vy0 = params
+        state0 = [x0_fixed, y0_fixed, vx0, vy0]
+        try:
+            sol = odeint(ode, state0, timestamps, args=(g, b))
+            predicted = np.concatenate([sol[:, 0], sol[:, 1]])
+            return np.sum((predicted - observed) ** 2)
+        except Exception:
+            return 1e6
+
+    x0_fixed = float(x_smooth[0])
+    y0_fixed = float(y_smooth[0])
+
+    x0_guess = [9.81, 0.025, vx0_guess, vy0_guess]
+    bounds = [(5, 15), (0.01, 0.1), (None, None), (None, None)]
+
+    res = minimize(residuals, x0_guess, method="Nelder-Mead",
+               options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 5000})
+
+    g_fit, b_fit, vx0_fit, vy0_fit = res.x
+
+    # Reconstruct full trajectory from fitted params
+    sol = odeint(ode, [x0_fixed, y0_fixed, vx0_fit, vy0_fit], timestamps, args=(g_fit, b_fit))
+    x_fit = sol[:, 0]
+    y_fit = sol[:, 1]
+    vx_fit = sol[:, 2]
+    vy_fit = sol[:, 3]
+
+    dt_arr = np.gradient(timestamps)
+    ax_fit = np.gradient(vx_fit, timestamps)
+    ay_fit = np.gradient(vy_fit, timestamps)
+
+    initial_speed    = float(math.sqrt(vx0_fit**2 + vy0_fit**2))
+    launch_angle_deg = float(math.degrees(math.atan2(vy0_fit, vx0_fit)))
+
+    return {
+        "timestamps":            timestamps.tolist(),
+        "x_positions_m":         x_fit.tolist(),
+        "y_positions_m":         y_fit.tolist(),
+        "velocities_x_ms":       vx_fit.tolist(),
+        "velocities_y_ms":       vy_fit.tolist(),
+        "accelerations_x_ms2":   ax_fit.tolist(),
+        "accelerations_y_ms2":   ay_fit.tolist(),
+        "estimated_gravity_ms2": round(float(g_fit), 3),
+        "initial_velocity_ms":   round(initial_speed, 3),
+        "launch_angle_deg":      round(launch_angle_deg, 2),
+        "px_per_metre":          round(px_per_metre, 4),
+        "drag_coefficient":      round(float(b_fit), 4),
     }
 
 

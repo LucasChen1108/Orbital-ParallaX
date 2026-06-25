@@ -23,6 +23,7 @@ export default function Home() {
   const [result, setResult] = useState<PhysicsResult | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useAirResistance, setUseAirResistance] = useState(false);
 
   function handleUploaded(data: UploadResponse) {
     setUploadData(data);
@@ -50,7 +51,8 @@ export default function Home() {
         { start_frame: startFrame, end_frame: endFrame },
         calibration,
         colourData.hsv_lower,
-        colourData.hsv_upper
+        colourData.hsv_upper,
+        useAirResistance,
       );
       if (res.status === "success" && res.result) {
         setResult(res.result);
@@ -78,6 +80,7 @@ export default function Home() {
       {step >= 2 && uploadData && (
         <>
           <hr />
+          <p>Detected FPS: {uploadData.fps}</p> 
           <IntervalSlider
             totalFrames={uploadData.total_frames}
             fps={uploadData.fps}
@@ -122,7 +125,15 @@ export default function Home() {
       {step >= 5 && (
         <>
           <hr />
-          <h2>Step 5 — Run Analysis</h2>
+          <h2>Step 5 — Run Analysis</h2>      
+          <label>
+            <input
+              type="checkbox"
+              checked={useAirResistance}
+              onChange={e => setUseAirResistance(e.target.checked)}
+            />
+            {" "}Consider air resistance
+          </label>
           <button onClick={handleAnalyse} disabled={analysing}>
             {analysing ? "Analysing..." : "Analyse Video"}
           </button>
