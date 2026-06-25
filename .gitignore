@@ -234,3 +234,4 @@ node_modules/
 **/.pytest_cache/
 *.pyc
 frontend/.next/
+.DS_Store
