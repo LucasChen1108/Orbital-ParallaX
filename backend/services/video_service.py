@@ -1,6 +1,14 @@
+import os
 import cv2
 import uuid
 from pathlib import Path
+
+# Restrict OpenCV's ffmpeg backend to local-file protocols. On some ffmpeg
+# builds, cv2.VideoCapture() otherwise treats local files as network streams
+# and tries RTSP/HTTP first, causing ~50s stream-timeout hangs that make
+# render_overlay() fail (has_overlay=false). This option is read when a video
+# is opened, so setting it here covers every VideoCapture call in this module.
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "protocol_whitelist;file,crypto,data"
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
