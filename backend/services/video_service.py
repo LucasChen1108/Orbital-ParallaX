@@ -114,7 +114,7 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path,
         if closest_frame is not None and closest_frame in stats_by_frame:
             s = stats_by_frame[closest_frame]
             lines = [
-                f"ArcLab",
+                "ArcLab",
                 f"Frame:  {frame_idx}",
                 f"t:      {s['t']:.3f} s",
                 f"x:      {s['x']:.3f} m",
@@ -123,11 +123,11 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path,
                 f"vy:     {s['vy']:.2f} m/s",
                 f"|v|:    {s['v']:.2f} m/s",
             ]
-            font       = cv2.FONT_HERSHEY_SIMPLEX
+            font = cv2.FONT_HERSHEY_SIMPLEX
             font_scale = 2.0
-            thickness  = 4
-            pad        = 40
-            line_h     = 80
+            thickness = 4
+            pad = 40
+            line_h = 80
 
             # Auto-size box width to fit longest line
             max_w = 0
@@ -141,14 +141,14 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path,
             # Fully opaque dark background
             cv2.rectangle(frame, (bx, by2), (bx + box_w, by2 + box_h),
                           (35, 12, 15), -1)
-            
+
             # Purple accent bar on left edge
             cv2.rectangle(frame, (bx, by2), (bx + 10, by2 + box_h),
                           (225, 100, 180), -1)
 
             # Thin border
             cv2.rectangle(frame, (bx, by2), (bx + box_w, by2 + box_h),
-                           (255, 100, 180), 3)
+                          (255, 100, 180), 3)
 
             # Text lines
             for i, line in enumerate(lines):
