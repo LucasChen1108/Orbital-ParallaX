@@ -96,7 +96,7 @@ def analyse_video(req: AnalysisRequest):
             data = compute_physics(detections, fps, px_per_metre)
     except ValueError as e:
         return AnalysisResponse(video_id=req.video_id, status="failed", error=str(e))
-    
+
     total = req.frame_range.end_frame - req.frame_range.start_frame + 1
     det_rate = round(100.0 * len(detections) / total, 1) if total else 0.0
 
@@ -152,6 +152,7 @@ def video_status(video_id: str):
         return {"video_id": video_id, "exists": True}
     except FileNotFoundError:
         raise HTTPException(404, "Video not found.")
+
 
 @router.get("/overlay/{video_id}")
 def get_overlay(video_id: str):

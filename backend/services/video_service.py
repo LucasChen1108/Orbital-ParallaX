@@ -48,6 +48,7 @@ def get_video_fps(video_path: Path) -> float:
     cap.release()
     return fps
 
+
 def render_overlay(video_path, start_frame, end_frame, detections, out_path):
     """Draw the tracked point on each frame and write an annotated video."""
     by_frame = {f: (cx, cy) for (f, cx, cy) in detections}
@@ -58,7 +59,7 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path):
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # NOTE: mp4v is not browser-playable. 
+    # NOTE: mp4v is not browser-playable.
     # need to transcode to H.264 so the <video> tag can play it.
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w, h))
@@ -77,7 +78,9 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path):
     cap.release()
     writer.release()
 
-    import imageio_ffmpeg, subprocess, os
+    import imageio_ffmpeg
+    import subprocess
+    import os
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     h264_path = str(out_path).replace(".mp4", "_h264.mp4")
     subprocess.run([ffmpeg, "-y", "-i", str(out_path),
