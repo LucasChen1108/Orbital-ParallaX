@@ -54,4 +54,9 @@ export interface AnalysisResponse {
   status: string;
   result?: PhysicsResult;
   error?: string;
+  detections?: [number, number, number][];   // [frame, cx, cy]
+  detected_frames?: number;
+  total_frames?: number;
+  detection_rate?: number;
+  has_overlay?: boolean;
 }

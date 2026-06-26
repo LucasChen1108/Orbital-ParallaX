@@ -86,7 +86,7 @@ def sample_ball_colour(
 
 # ── Public: tracking ──────────────────────────────────────────────────────────
 
-def track_ball(
+def track_hsv(
     video_path: Path,
     start_frame: int,
     end_frame: int,

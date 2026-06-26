@@ -2,16 +2,20 @@ import sys
 from pathlib import Path
 
 import cv2
+from fastapi import APIRouter, UploadFile, File, HTTPException, Response
+from fastapi.responses import FileResponse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Response
 from models.schemas import (
     UploadResponse,
     SampleColourRequest, SampleColourResponse,
     AnalysisRequest, AnalysisResponse, PhysicsResult,
 )
-from services.video_service import save_video, get_video_path, get_video_fps
+from services.video_service import (
+    save_video, get_video_path, get_video_fps,
+    render_overlay, overlay_path_for,
+)
 from physics_engine import (
     sample_ball_colour, track_ball,
     compute_px_per_metre, compute_physics,
@@ -71,6 +75,7 @@ def analyse_video(req: AnalysisRequest):
         req.frame_range.end_frame,
         hsv_lower=req.hsv_lower,
         hsv_upper=req.hsv_upper,
+        method=req.method,
     )
 
     if len(detections) < 5:
@@ -92,10 +97,28 @@ def analyse_video(req: AnalysisRequest):
     except ValueError as e:
         return AnalysisResponse(video_id=req.video_id, status="failed", error=str(e))
 
+    total = req.frame_range.end_frame - req.frame_range.start_frame + 1
+    det_rate = round(100.0 * len(detections) / total, 1) if total else 0.0
+
+    # generating overlay
+    has_overlay = False
+    try:
+        render_overlay(path, req.frame_range.start_frame,
+                       req.frame_range.end_frame, detections,
+                       overlay_path_for(req.video_id))
+        has_overlay = True
+    except Exception:
+        pass
+
     return AnalysisResponse(
         video_id=req.video_id,
         status="success",
         result=PhysicsResult(**data),
+        detections=detections,
+        detected_frames=len(detections),
+        total_frames=total,
+        detection_rate=det_rate,
+        has_overlay=has_overlay,
     )
 
 
@@ -129,3 +152,11 @@ def video_status(video_id: str):
         return {"video_id": video_id, "exists": True}
     except FileNotFoundError:
         raise HTTPException(404, "Video not found.")
+
+
+@router.get("/overlay/{video_id}")
+def get_overlay(video_id: str):
+    p = overlay_path_for(video_id)
+    if not p.exists():
+        raise HTTPException(404, "No overlay for this video.")
+    return FileResponse(str(p), media_type="video/mp4")

@@ -41,7 +41,8 @@ export async function analyseVideo(
   calibration: CalibrationPoints,
   hsv_lower: number[],
   hsv_upper: number[],
-  use_air_resistance: boolean = false
+  use_air_resistance: boolean = false,
+  method: "hsv" | "yolo" = "hsv"
 ): Promise<AnalysisResponse> {
   if (USE_MOCK) return MOCK_ANALYSIS;
   const res = await axios.post<AnalysisResponse>(`${BASE}/analyse`, {
@@ -51,6 +52,7 @@ export async function analyseVideo(
     hsv_lower,
     hsv_upper,
     use_air_resistance,
+    method,
   });
   return res.data;
 }

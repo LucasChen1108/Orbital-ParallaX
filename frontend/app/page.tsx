@@ -6,12 +6,14 @@ import IntervalSlider from "./components/IntervalSlider";
 import BallPicker from "./components/BallPicker";
 import CalibrationPicker from "./components/CalibrationPicker";
 import ResultsPanel from "./components/ResultsPanel";
+import TrajectoryPlot from "./components/TrajectoryPlot";
 import { analyseVideo } from "./lib/api";
 import {
   UploadResponse,
   SampleColourResponse,
   CalibrationPoints,
   PhysicsResult,
+  AnalysisResponse,
 } from "./types/analysis";
 import { MOCK_ANALYSIS } from "./lib/mockData";
 
@@ -35,6 +37,8 @@ export default function Home() {
   const [analysing, setAnalysing]       = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [useAirResistance, setUseAirResistance] = useState(false);
+  const [method, setMethod]             = useState<"hsv" | "yolo">("hsv");
+  const [analysis, setAnalysis]         = useState<AnalysisResponse | null>(null);
 
   function loadMockResults() {
     if (MOCK_ANALYSIS.result) {
@@ -49,6 +53,18 @@ export default function Home() {
     setStep(2);
   }
 
+  // After the interval is confirmed, branch by method:
+  //   hsv  → Step 3 (pick ball colour) → Step 4 (calibration)
+  //   yolo → skip Step 3, jump straight to Step 4 (calibration)
+  function handleConfirmInterval() {
+    if (method === "yolo") {
+      setColourData(null);   // no colour needed for YOLO
+      setStep(4);
+    } else {
+      setStep(3);
+    }
+  }
+
   function handleColourSampled(data: SampleColourResponse) {
     setColourData(data);
     setStep(4);
@@ -59,8 +75,17 @@ export default function Home() {
     setStep(5);
   }
 
+  // Back button: for YOLO, step 4 goes back to 2 (no ball-pick step).
+  function handleBack() {
+    if (step === 4 && method === "yolo") setStep(2);
+    else setStep(s => s - 1);
+  }
+
   async function handleAnalyse() {
-    if (!uploadData || !colourData || !calibration) return;
+    if (!uploadData || !calibration) return;
+    // HSV needs sampled colour; YOLO does not.
+    if (method === "hsv" && !colourData) return;
+
     setAnalysing(true);
     setError(null);
     try {
@@ -68,12 +93,14 @@ export default function Home() {
         uploadData.video_id,
         { start_frame: startFrame, end_frame: endFrame },
         calibration,
-        colourData.hsv_lower,
-        colourData.hsv_upper,
+        colourData?.hsv_lower ?? [],
+        colourData?.hsv_upper ?? [],
         useAirResistance,
+        method,
       );
       if (res.status === "success" && res.result) {
         setResult(res.result);
+        setAnalysis(res);
         setStep(6);
       } else {
         setError(res.error ?? "Analysis failed.");
@@ -118,7 +145,7 @@ export default function Home() {
             <VideoUploader onUploaded={handleUploaded} />
           )}
 
-          {/* Step 2 — Interval */}
+          {/* Step 2 — Interval + tracking method */}
           {step === 2 && uploadData && (
             <>
               <div style={{
@@ -142,14 +169,40 @@ export default function Home() {
                 onStartChange={setStartFrame}
                 onEndChange={setEndFrame}
               />
+
+              {/* Tracking method selection */}
+              <div style={{ marginTop: "24px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "10px", color: "rgba(255,255,255,0.7)" }}>
+                  Tracking method
+                </div>
+                <label style={{ display: "block", marginBottom: "8px", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="method"
+                    checked={method === "hsv"}
+                    onChange={() => setMethod("hsv")}
+                  />
+                  {" "}Colour (HSV) — you click the ball
+                </label>
+                <label style={{ display: "block", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="method"
+                    checked={method === "yolo"}
+                    onChange={() => setMethod("yolo")}
+                  />
+                  {" "}YOLOv8 — automatic, no clicking
+                </label>
+              </div>
+
               <div style={{ marginTop: "28px" }}>
-                <PrimaryButton onClick={() => setStep(3)} label="Confirm interval →" />
+                <PrimaryButton onClick={handleConfirmInterval} label="Confirm interval →" />
               </div>
             </>
           )}
 
-          {/* Step 3 — Ball picker */}
-          {step === 3 && uploadData && (
+          {/* Step 3 — Ball picker (HSV only) */}
+          {step === 3 && method === "hsv" && uploadData && (
             <BallPicker
               videoId={uploadData.video_id}
               frameIndex={startFrame}
@@ -180,6 +233,9 @@ export default function Home() {
               }}>
                 <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "14px", color: "rgba(255,255,255,0.7)" }}>
                   Options
+                </div>
+                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "16px" }}>
+                  Tracking method: <strong style={{ color: "#AFA9EC" }}>{method === "yolo" ? "YOLOv8" : "Colour (HSV)"}</strong>
                 </div>
                 <label style={{ display: "flex", alignItems: "flex-start", gap: "12px", cursor: "pointer" }}>
                   <div style={{ position: "relative", marginTop: "2px" }}>
@@ -232,7 +288,38 @@ export default function Home() {
 
           {/* Step 6 — Results */}
           {step === 6 && result && (
-            <ResultsPanel result={result} />
+            <>
+              <ResultsPanel result={result} />
+
+              {/* Tracking result */}
+              {analysis && (
+                <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "10px", color: "rgba(255,255,255,0.7)" }}>
+                    Tracking result
+                  </div>
+                  <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "16px" }}>
+                    Detected {analysis.detected_frames}/{analysis.total_frames} frames
+                    ({analysis.detection_rate}%) — {method === "yolo" ? "YOLOv8" : "HSV"}
+                  </p>
+
+                  {analysis.has_overlay && (
+                    <video
+                      src={`http://localhost:8000/api/v1/video/overlay/${analysis.video_id}`}
+                      controls
+                      style={{ maxWidth: "100%", borderRadius: "10px", marginBottom: "16px" }}
+                    />
+                  )}
+
+                  {analysis.detections && (
+                    <TrajectoryPlot
+                      detections={analysis.detections}
+                      width={uploadData!.width}
+                      height={uploadData!.height}
+                    />
+                  )}
+                </div>
+              )}
+            </>
           )}
 
         </div>
@@ -240,7 +327,7 @@ export default function Home() {
         {/* Back link (steps 2–5) */}
         {step > 1 && step < 6 && (
           <button
-            onClick={() => setStep(s => s - 1)}
+            onClick={handleBack}
             style={{
               background: "transparent", border: "none", color: "rgba(255,255,255,0.3)",
               fontSize: "13px", cursor: "pointer", padding: 0,
@@ -253,7 +340,11 @@ export default function Home() {
         {/* New analysis (step 6) */}
         {step === 6 && (
           <button
-            onClick={() => { setStep(1); setResult(null); setUploadData(null); setColourData(null); setCalibration(null); }}
+            onClick={() => {
+              setStep(1); setResult(null); setUploadData(null);
+              setColourData(null); setCalibration(null);
+              setAnalysis(null); setMethod("hsv");
+            }}
             style={{
               background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
               color: "rgba(255,255,255,0.5)", fontSize: "13px", cursor: "pointer",
@@ -263,18 +354,19 @@ export default function Home() {
             ↺ Start new analysis
           </button>
         )}
-      <div style={{ marginTop: "40px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <button
-          onClick={loadMockResults}
-          style={{
-            background: "transparent", border: "1px dashed rgba(127,119,221,0.3)",
-            color: "rgba(127,119,221,0.6)", padding: "8px 16px",
-            borderRadius: "8px", fontSize: "12px", cursor: "pointer",
-          }}
-        >
-          ⚡ Skip to mock results (dev only)
-        </button>
-      </div>
+
+        <div style={{ marginTop: "40px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <button
+            onClick={loadMockResults}
+            style={{
+              background: "transparent", border: "1px dashed rgba(127,119,221,0.3)",
+              color: "rgba(127,119,221,0.6)", padding: "8px 16px",
+              borderRadius: "8px", fontSize: "12px", cursor: "pointer",
+            }}
+          >
+            ⚡ Skip to mock results (dev only)
+          </button>
+        </div>
       </main>
     </div>
   );

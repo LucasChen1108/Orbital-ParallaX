@@ -46,6 +46,7 @@ class AnalysisRequest(BaseModel):
     hsv_lower: list[int]
     hsv_upper: list[int]
     use_air_resistance: bool = False
+    method: str = "hsv"   # "hsv" | "yolo"
 
 
 class PhysicsResult(BaseModel):
@@ -68,3 +69,9 @@ class AnalysisResponse(BaseModel):
     status: str
     result: Optional[PhysicsResult] = None
     error: Optional[str] = None
+    # tracking
+    detections: Optional[list[tuple[int, float, float]]] = None
+    detected_frames: Optional[int] = None
+    total_frames: Optional[int] = None
+    detection_rate: Optional[float] = None   # 0~100
+    has_overlay: bool = False
