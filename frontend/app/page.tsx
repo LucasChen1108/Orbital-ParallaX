@@ -289,36 +289,14 @@ export default function Home() {
           {/* Step 6 — Results */}
           {step === 6 && result && (
             <>
-              <ResultsPanel result={result} />
-
-              {/* Tracking result */}
-              {analysis && (
-                <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                  <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "10px", color: "rgba(255,255,255,0.7)" }}>
-                    Tracking result
-                  </div>
-                  <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "16px" }}>
-                    Detected {analysis.detected_frames}/{analysis.total_frames} frames
-                    ({analysis.detection_rate}%) — {method === "yolo" ? "YOLOv8" : "HSV"}
-                  </p>
-
-                  {analysis.has_overlay && (
-                    <video
-                      src={`http://localhost:8000/api/v1/video/overlay/${analysis.video_id}`}
-                      controls
-                      style={{ maxWidth: "100%", borderRadius: "10px", marginBottom: "16px" }}
-                    />
-                  )}
-
-                  {analysis.detections && (
-                    <TrajectoryPlot
-                      detections={analysis.detections}
-                      width={uploadData!.width}
-                      height={uploadData!.height}
-                    />
-                  )}
-                </div>
-              )}
+              <ResultsPanel
+                result={result}
+                analysis={analysis}
+                uploadData={uploadData}
+                calibration={calibration}
+                frameRange={{ start_frame: startFrame, end_frame: endFrame }}
+                useAirResistance={useAirResistance}
+              />
             </>
           )}
 

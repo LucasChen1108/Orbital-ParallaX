@@ -62,6 +62,7 @@ class PhysicsResult(BaseModel):
     launch_angle_deg: float
     px_per_metre: float
     drag_coefficient: Optional[float] = None
+    tracker_mode: Optional[str] = None
 
 
 class AnalysisResponse(BaseModel):

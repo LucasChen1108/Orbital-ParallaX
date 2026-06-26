@@ -113,7 +113,7 @@ def analyse_video(req: AnalysisRequest):
     return AnalysisResponse(
         video_id=req.video_id,
         status="success",
-        result=PhysicsResult(**data),
+        result=PhysicsResult(**data, tracker_mode=req.method),
         detections=detections,
         detected_frames=len(detections),
         total_frames=total,
@@ -142,8 +142,19 @@ def get_frame(video_id: str, frame_index: int):
         raise HTTPException(422, f"Could not read frame {frame_index}.")
 
     _, buffer = cv2.imencode(".jpg", frame)
-    return Response(content=buffer.tobytes(), media_type="image/jpeg")
+    return Response(
+        content=buffer.tobytes(),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "no-store"},
+    )
 
+@router.get("/video/{video_id}")
+def get_video(video_id: str):
+    try:
+        path = get_video_path(video_id)
+    except FileNotFoundError:
+        raise HTTPException(404, "Video not found.")
+    return FileResponse(str(path), media_type="video/mp4")
 
 @router.get("/status/{video_id}")
 def video_status(video_id: str):
