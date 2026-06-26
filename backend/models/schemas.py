@@ -49,6 +49,11 @@ class AnalysisRequest(BaseModel):
     method: str = "hsv"   # "hsv" | "yolo"
 
 
+class PredictedTrajectory(BaseModel):
+    x_positions_m: list[float]
+    y_positions_m: list[float]
+
+
 class PhysicsResult(BaseModel):
     timestamps: list[float]
     x_positions_m: list[float]
@@ -63,6 +68,7 @@ class PhysicsResult(BaseModel):
     px_per_metre: float
     drag_coefficient: Optional[float] = None
     tracker_mode: Optional[str] = None
+    predicted_trajectory: Optional[PredictedTrajectory] = None
 
 
 class AnalysisResponse(BaseModel):
