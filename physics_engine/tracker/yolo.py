@@ -13,7 +13,10 @@ from pathlib import Path
 from ultralytics import YOLO
 
 SPORTS_BALL_CLASS = 32          # COCO class id for "sports ball"
-YOLO_WEIGHTS      = "yolov8n.pt"  # nano model; bump to yolov8s/m if balls are missed
+# Load the bundled weights next to this file (committed to the repo), so no
+# network download is needed on first run. nano model; bump to yolov8s/m if
+# balls are missed.
+YOLO_WEIGHTS      = str(Path(__file__).parent / "yolov8n.pt")
 YOLO_CONF         = 0.1        # confidence floor
 
 # Module-level lazy singleton — model is loaded once and reused.
