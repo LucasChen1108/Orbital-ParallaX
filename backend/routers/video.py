@@ -148,6 +148,7 @@ def get_frame(video_id: str, frame_index: int):
         headers={"Cache-Control": "no-store"},
     )
 
+
 @router.get("/video/{video_id}")
 def get_video(video_id: str):
     try:
@@ -155,6 +156,7 @@ def get_video(video_id: str):
     except FileNotFoundError:
         raise HTTPException(404, "Video not found.")
     return FileResponse(str(path), media_type="video/mp4")
+
 
 @router.get("/status/{video_id}")
 def video_status(video_id: str):

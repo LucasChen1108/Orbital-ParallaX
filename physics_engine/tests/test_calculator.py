@@ -57,6 +57,7 @@ def test_compute_physics_returns_correct_keys():
         "accelerations_x_ms2", "accelerations_y_ms2",
         "estimated_gravity_ms2", "initial_velocity_ms",
         "launch_angle_deg", "px_per_metre",
+        "predicted_trajectory",
     }
     assert expected_keys == set(result.keys())
 
