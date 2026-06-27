@@ -97,11 +97,11 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     return () => video.removeEventListener("timeupdate", handleTimeUpdate);
   }, [fps, frameStart, totalAnalysedFrames]);
 
-  function goToFrame(newIdx: number) {
+  const goToFrame = useCallback((newIdx: number) => {
     const clamped = Math.max(0, Math.min(totalAnalysedFrames - 1, newIdx));
     setCurrentFrameIdx(clamped);
     if (videoRef.current) videoRef.current.currentTime = (frameStart + clamped) / fps;
-  }
+  }, [totalAnalysedFrames, frameStart, fps]);
 
   // Prevent page scroll when zooming on canvas
   useEffect(() => {
@@ -138,16 +138,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       (cx - W / 2) * zoom + W / 2 + pan.x,
       (cy - H / 2) * zoom + H / 2 + pan.y,
     ];
-  }, [zoom, pan]);
-
-  const fromCanvas = useCallback((cx: number, cy: number, bounds: ReturnType<typeof getBounds>): [number, number] => {
-    const { minX, maxX, minY, maxY } = bounds;
-    const ux = (cx - W / 2 - pan.x) / zoom + W / 2;
-    const uy = (cy - H / 2 - pan.y) / zoom + H / 2;
-    const x = minX + ((ux - pad) / (W - pad * 2)) * (maxX - minX);
-    const y = maxY - ((uy - pad) / (H - pad * 2)) * (maxY - minY);
-    return [x, y];
-  }, [zoom, pan]);
+  }, [zoom, pan.x, pan.y]);
 
   const drawTrajectory = useCallback(() => {
     const canvas = trajectoryCanvasRef.current;
@@ -169,14 +160,14 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     ctx.lineWidth = 1;
     for (let i = 0; i <= ySteps; i++) {
       const yVal = maxY - (i / ySteps) * (maxY - minY);
-      const [, gy] = toCanvas(minX, yVal, bounds);
+      const gy = toCanvas(minX, yVal, bounds)[1];
       ctx.beginPath(); ctx.moveTo(pad * zoom, gy); ctx.lineTo(W - pad * zoom, gy); ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "10px monospace"; ctx.textAlign = "right";
       ctx.fillText(yVal.toFixed(2), pad - 4, gy + 3);
     }
     for (let i = 0; i <= xSteps; i++) {
       const xVal = minX + (i / xSteps) * (maxX - minX);
-      const [gx] = toCanvas(xVal, minY, bounds);
+      const gx = toCanvas(xVal, minY, bounds)[0];
       ctx.beginPath(); ctx.moveTo(gx, pad * zoom); ctx.lineTo(gx, H - pad * zoom); ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "10px monospace"; ctx.textAlign = "center";
       ctx.fillText(xVal.toFixed(2), gx, H - pad + 14);
@@ -308,7 +299,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "9px monospace";
       ctx.fillText("click to seek video", tx + 8, ty + tipH - 4);
     }
-  }, [xs, ys, showGhost, showStrobe, result, currentFrameIdx, frameStart, hoverPoint, zoom, pan, getBounds, toCanvas, netVelocities, vxArr, vyArr, n]);
+  }, [xs, ys, showGhost, showStrobe, result, currentFrameIdx, frameStart, hoverPoint, zoom, getBounds, toCanvas, netVelocities, vxArr, vyArr, n]);
 
   useEffect(() => { drawTrajectory(); }, [drawTrajectory]);
 
@@ -348,8 +339,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
 
   const handleCanvasClick = useCallback(() => {
     if (!didDrag.current && hoverPoint) goToFrame(hoverPoint.idx);
-    didDrag.current = false;
-  }, [hoverPoint]);
+  }, [hoverPoint, goToFrame]);
 
  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     isPanning.current = true;
@@ -360,6 +350,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   const handleMouseUp = useCallback(() => {
     isPanning.current = false;
     setPanning(false);
+    setTimeout(() => { didDrag.current = false; }, 0);
   }, []);
 
   // Current frame data
