@@ -103,11 +103,31 @@ def analyse_video(req: AnalysisRequest):
     # generating overlay
     has_overlay = False
     try:
-        render_overlay(path, req.frame_range.start_frame,
-                       req.frame_range.end_frame, detections,
-                       overlay_path_for(req.video_id))
+        predicted = data.get("predicted_trajectory") or {}
+        origin_px = None
+        if detections:
+            first_det = detections[0]
+            origin_px = (int(first_det[1]), int(first_det[2]))
+
+        render_overlay(
+            path,
+            req.frame_range.start_frame,
+            req.frame_range.end_frame,
+            detections,
+            overlay_path_for(req.video_id),
+            timestamps=data.get("timestamps"),
+            xs=data.get("x_positions_m"),
+            ys=data.get("y_positions_m"),
+            vxs=data.get("velocities_x_ms"),
+            vys=data.get("velocities_y_ms"),
+            ghost_xs=predicted.get("x_positions_m"),
+            ghost_ys=predicted.get("y_positions_m"),
+            px_per_metre=data.get("px_per_metre"),
+            origin_px=origin_px,
+        )
         has_overlay = True
-    except Exception:
+    except Exception as e:
+        print(f"[overlay] render_overlay failed: {e}")
         pass
 
     return AnalysisResponse(
