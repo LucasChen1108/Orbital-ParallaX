@@ -103,6 +103,18 @@ def compute_physics(
     initial_speed     = float(math.sqrt(float(vx[0])**2 + float(vy[0])**2))
     launch_angle_deg  = float(math.degrees(math.atan2(float(vy[0]), float(vx[0]))))
 
+    # Ideal (no-drag) ghost from the same launch point, using THIS clip's
+    # estimated gravity (not 9.81) so the vertical scale matches the data.
+    # Extended ~1.5x the tracked window so it visibly projects farther than
+    # the (drag-slowed) real path.
+    t_track = float(timestamps[-1]) if len(timestamps) > 1 else 1.0
+    ghost_ts = np.arange(0.0, t_track * 1.5 + 1e-9, 1.0 / fps)
+    predicted = predict_trajectory(
+        x0=float(x_smooth[0]), y0=float(y_smooth[0]),
+        vx0=float(vx[0]), vy0=float(vy[0]),
+        timestamps=ghost_ts, g=estimated_gravity, drag_coeff=0.0,
+    )
+
     return {
         "timestamps":            timestamps.tolist(),
         "x_positions_m":         x_smooth.tolist(),
@@ -115,6 +127,7 @@ def compute_physics(
         "initial_velocity_ms":   round(initial_speed, 3),
         "launch_angle_deg":      round(launch_angle_deg, 2),
         "px_per_metre":          round(px_per_metre, 4),
+        "predicted_trajectory":  predicted,
     }
 
 def compute_physics_with_drag(
@@ -207,6 +220,17 @@ def compute_physics_with_drag(
     initial_speed    = float(math.sqrt(vx0_fit**2 + vy0_fit**2))
     launch_angle_deg = float(math.degrees(math.atan2(vy0_fit, vx0_fit)))
 
+    # Ideal (no-drag) ghost using the fitted launch conditions and the fitted
+    # gravity g_fit (matched vertical scale), extended ~1.5x so it visibly
+    # projects farther than the drag-fitted real path.
+    t_track = float(timestamps[-1]) if len(timestamps) > 1 else 1.0
+    ghost_ts = np.arange(0.0, t_track * 1.5 + 1e-9, 1.0 / fps)
+    predicted = predict_trajectory(
+        x0=float(x0_fixed), y0=float(y0_fixed),
+        vx0=float(vx0_fit), vy0=float(vy0_fit),
+        timestamps=ghost_ts, g=float(g_fit), drag_coeff=0.0,
+    )
+
     return {
         "timestamps":            timestamps.tolist(),
         "x_positions_m":         x_fit.tolist(),
@@ -220,34 +244,53 @@ def compute_physics_with_drag(
         "launch_angle_deg":      round(launch_angle_deg, 2),
         "px_per_metre":          round(px_per_metre, 4),
         "drag_coefficient":      round(float(b_fit), 4),
+        "predicted_trajectory":  predicted,
     }
 
 
-# ── Ghost trajectory stub — Feature 5, uncomment in M2 ───────────────────────
-#
-# def predict_trajectory(
-#     v0: float, angle_deg: float,
-#     g: float = 9.81, drag_coeff: float = 0.0,
-#     dt: float = 0.01, max_t: float = 5.0,
-# ) -> dict:
-#     """
-#     Predict path from launch conditions.
-#     drag_coeff=0.0 → no air resistance (Feature 5 checkbox off)
-#     drag_coeff>0.0 → with air resistance (Feature 5 checkbox on)
-#     """
-#     angle_rad = math.radians(angle_deg)
-#     vx = v0 * math.cos(angle_rad)
-#     vy = v0 * math.sin(angle_rad)
-#     xs, ys, ts = [], [], []
-#     t, x, y = 0.0, 0.0, 0.0
-#     while y >= 0 and t <= max_t:
-#         speed = math.sqrt(vx**2 + vy**2)
-#         vx += -drag_coeff * speed * vx * dt
-#         vy += (-g - drag_coeff * speed * vy) * dt
-#         x  += vx * dt
-#         y  += vy * dt
-#         t  += dt
-#         xs.append(round(x, 4))
-#         ys.append(round(y, 4))
-#         ts.append(round(t, 4))
-#     return {"timestamps": ts, "x_positions_m": xs, "y_positions_m": ys}
+# ── Ghost trajectory — Feature 5 ─────────────────────────────────────────────
+
+def predict_trajectory(
+    x0: float, y0: float,
+    vx0: float, vy0: float,
+    timestamps,
+    g: float,
+    drag_coeff: float = 0.0,
+) -> dict:
+    """
+    Predicted (no-drag) path from the launch point, sampled at the given
+    timestamps so it overlays on the tracked path.
+
+    IMPORTANT: pass the data's own estimated gravity as `g`, NOT a hard-coded
+    9.81. The tracked positions are in calibrated "metres" whose scale depends
+    on px/m; using the estimated g keeps the ghost's vertical timescale matched
+    to the data, so at equal height the no-drag ghost correctly reaches farther.
+
+    drag_coeff == 0.0 → ideal parabola:
+        x(t) = x0 + vx0*t
+        y(t) = y0 + vy0*t - 0.5*g*t^2
+    drag_coeff  > 0.0 → quadratic drag, integrated numerically.
+    """
+    ts = list(timestamps)
+    xs: list[float] = []
+    ys: list[float] = []
+
+    if drag_coeff == 0.0:
+        for t in ts:
+            xs.append(round(x0 + vx0 * t, 4))
+            ys.append(round(y0 + vy0 * t - 0.5 * g * t * t, 4))
+        return {"x_positions_m": xs, "y_positions_m": ys}
+
+    x, y, vx, vy = x0, y0, vx0, vy0
+    t_cur, step = 0.0, 0.002
+    for t in ts:
+        while t_cur < t:
+            speed = math.sqrt(vx * vx + vy * vy)
+            vx += -drag_coeff * speed * vx * step
+            vy += (-g - drag_coeff * speed * vy) * step
+            x  += vx * step
+            y  += vy * step
+            t_cur += step
+        xs.append(round(x, 4))
+        ys.append(round(y, 4))
+    return {"x_positions_m": xs, "y_positions_m": ys}
