@@ -170,12 +170,44 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       ctx.stroke(); ctx.setLineDash([]);
     }
 
-    // Start / end dots
-    const [sx,sy] = toCanvas(xs[0], ys[0]);
-    const [ex,ey] = toCanvas(xs[xs.length-1], ys[ys.length-1]);
-    ctx.fillStyle = "rgba(255,215,0,0.4)";
-    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI*2); ctx.fill();
+    // Start / end dots with coordinate labels
+    const [sx, sy] = toCanvas(xs[0], ys[0]);
+    const [ex, ey] = toCanvas(xs[xs.length - 1], ys[ys.length - 1]);
+
+    // Helper to draw a labelled point
+    function drawLabelledPoint(px: number, py: number, label: string, alignRight: boolean) {
+      if (!ctx) return;
+      // Dot
+      ctx.fillStyle = "#FFD700";
+      ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
+      // White ring
+      ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.stroke();
+      // Background pill
+      const lines2 = label.split("\n");
+      const lineH2 = 13;
+      const boxW2 = 110;
+      const boxH2 = lines2.length * lineH2 + 8;
+      const bx2 = alignRight ? px - boxW2 - 10 : px + 12;
+      const by3 = py - boxH2 / 2;
+      ctx.fillStyle = "rgba(0,0,0,0.75)";
+      ctx.beginPath();
+      ctx.roundRect(bx2, by3, boxW2, boxH2, 4);
+      ctx.fill();
+      // Label text
+      ctx.fillStyle = "#FFD700";
+      ctx.font = "9px monospace";
+      ctx.textAlign = "left";
+      lines2.forEach((ln, i) => {
+        ctx.fillText(ln, bx2 + 6, by3 + 11 + i * lineH2);
+      });
+    }
+
+    const startLabel = `start\nt=${result.timestamps[0].toFixed(3)}s\nx=${xs[0].toFixed(3)}m\ny=${ys[0].toFixed(3)}m`;
+    const endLabel   = `end\nt=${result.timestamps[result.timestamps.length-1].toFixed(3)}s\nx=${xs[xs.length-1].toFixed(3)}m\ny=${ys[xs.length-1].toFixed(3)}m`;
+
+    drawLabelledPoint(sx, sy, startLabel, false);
+    drawLabelledPoint(ex, ey, endLabel, true);
 
     // Current frame indicator dot
     const fi = currentFrameIdx;
