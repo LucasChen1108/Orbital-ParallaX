@@ -6,7 +6,6 @@ import IntervalSlider from "./components/IntervalSlider";
 import BallPicker from "./components/BallPicker";
 import CalibrationPicker from "./components/CalibrationPicker";
 import ResultsPanel from "./components/ResultsPanel";
-import TrajectoryPlot from "./components/TrajectoryPlot";
 import { analyseVideo } from "./lib/api";
 import {
   UploadResponse,
