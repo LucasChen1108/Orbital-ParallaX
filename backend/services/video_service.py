@@ -58,7 +58,9 @@ def get_video_fps(video_path: Path) -> float:
 
 
 def render_overlay(video_path, start_frame, end_frame, detections, out_path,
-                   timestamps=None, xs=None, ys=None, vxs=None, vys=None):
+                   timestamps=None, xs=None, ys=None, vxs=None, vys=None,
+                   ghost_xs=None, ghost_ys=None, px_per_metre=None,
+                   origin_px=None):
     # Build per-frame stats lookup
     stats_by_frame = {}
     if timestamps and xs and ys and vxs and vys:
@@ -88,18 +90,43 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path,
         ret, frame = cap.read()
         if not ret:
             break
-        # Draw FULL trajectory arc on every frame
+        # Draw ghost trajectory — gold dashed line (ideal, no drag)
+        if ghost_xs and ghost_ys and px_per_metre and origin_px and xs and ys:
+            ghost_points = []
+            ox, oy = origin_px
+            x0_m = xs[0]
+            y0_m = ys[0]
+            for gx, gy in zip(ghost_xs, ghost_ys):
+                # Convert: pixel = origin_pixel + (metres_offset) * px_per_metre
+                gpx = int(ox + (gx - x0_m) * px_per_metre)
+                gpy = int(oy - (gy - y0_m) * px_per_metre)  # y flipped
+                ghost_points.append((gpx, gpy))
+            # Dashed gold line
+            for i in range(1, len(ghost_points)):
+                if i % 2 == 0:
+                    cv2.line(frame, ghost_points[i-1], ghost_points[i],
+                             (255, 100, 180), 6) # solid purple — tracked path
+            if ghost_points:
+                cv2.putText(frame, "ideal (no drag)",
+                            (ghost_points[-1][0] + 10, ghost_points[-1][1]),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1.6, (255, 100, 180), 6)
+
+        # Draw FULL tracked trajectory arc on every frame
         past_points = []
         for fi in range(start_frame, end_frame + 1):
             if fi in by_frame:
-                px, py = int(by_frame[fi][0]), int(by_frame[fi][1])
-                past_points.append((px, py))
+                ppx, ppy = int(by_frame[fi][0]), int(by_frame[fi][1])
+                past_points.append((ppx, ppy))
 
-        # Draw the arc line
         if len(past_points) >= 2:
             for i in range(1, len(past_points)):
                 cv2.line(frame, past_points[i-1], past_points[i],
-                         (127, 119, 221), 6)  # purple line, 6px thick
+                         (0, 215, 255), 8)   # gold BGR, thick 
+        # Tracked label
+        if len(past_points) >= 2:
+            cv2.putText(frame, "tracked",
+                        (past_points[-1][0] + 10, past_points[-1][1]),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.6, (0, 215, 255), 8)
 
         # Draw current ball position
         pt = by_frame.get(frame_idx)
