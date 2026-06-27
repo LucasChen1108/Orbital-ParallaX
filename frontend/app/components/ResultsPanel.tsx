@@ -14,6 +14,12 @@ interface Props {
   useAirResistance?: boolean;
 }
 
+interface HoverPoint {
+  idx: number;
+  cx: number;
+  cy: number;
+}
+
 export default function ResultsPanel({ result, analysis, uploadData, calibration, frameRange, useAirResistance }: Props) {
   const trajectoryCanvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,36 +31,43 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   const [currentFrameIdx, setCurrentFrameIdx] = useState(0);
   const [jumpSize, setJumpSize] = useState(10);
   const [jumpInput, setJumpInput] = useState("10");
+  const [hoverPoint, setHoverPoint] = useState<HoverPoint | null>(null);
+
+  // Zoom/pan state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const [panning, setPanning] = useState(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
 
   const frameStart = frameRange?.start_frame ?? 0;
   const frameEnd   = frameRange?.end_frame   ?? (result.timestamps.length - 1);
   const totalAnalysedFrames = result.timestamps.length;
   const fps = uploadData?.fps ?? 30;
 
-  // Derived metrics
-  const xs   = result.x_positions_m;
-  const ys   = result.y_positions_m;
+  const xs    = result.x_positions_m;
+  const ys    = result.y_positions_m;
   const vxArr = result.velocities_x_ms;
   const vyArr = result.velocities_y_ms;
-  const n    = result.timestamps.length;
+  const n     = result.timestamps.length;
   const netVelocities   = vxArr.map((vx, i) => Math.sqrt(vx ** 2 + (vyArr[i] ?? 0) ** 2));
   const peakVelocity    = Math.max(...netVelocities);
   const maxHeight       = Math.max(...ys);
   const horizontalRange = Math.abs(xs[xs.length - 1] - xs[0]);
   const timeOfFlight    = result.timestamps[n - 1] - result.timestamps[0];
 
-  // R² of parabolic fit
+  // R²
   let r2 = 1;
   const ts = result.timestamps;
   if (n >= 3) {
-    const meanY  = ys.reduce((a, b) => a + b, 0) / n;
-    const ssTot  = ys.reduce((a, y) => a + (y - meanY) ** 2, 0);
-    const t0     = ts[0];
-    const X      = ts.map(t => [1, t - t0, (t - t0) ** 2]);
-    const XT     = [0,1,2].map(j => X.map(row => row[j]));
-    const XTX    = [0,1,2].map(ri => [0,1,2].map(ci => XT[ri].reduce((s,v,k) => s + v*X[k][ci], 0)));
-    const XTy    = [0,1,2].map(ri => XT[ri].reduce((s,v,k) => s + v*ys[k], 0));
-    const det    = (m: number[][]) =>
+    const meanY = ys.reduce((a, b) => a + b, 0) / n;
+    const ssTot = ys.reduce((a, y) => a + (y - meanY) ** 2, 0);
+    const t0 = ts[0];
+    const X   = ts.map(t => [1, t - t0, (t - t0) ** 2]);
+    const XT  = [0,1,2].map(j => X.map(row => row[j]));
+    const XTX = [0,1,2].map(ri => [0,1,2].map(ci => XT[ri].reduce((s,v,k) => s + v*X[k][ci], 0)));
+    const XTy = [0,1,2].map(ri => XT[ri].reduce((s,v,k) => s + v*ys[k], 0));
+    const det = (m: number[][]) =>
       m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) -
       m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) +
       m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
@@ -72,32 +85,69 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     }
   }
 
-  // ── Sync video currentTime → currentFrameIdx ─────────────────────
+  // ── Video sync ───────────────────────────────────────────────────
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const handleTimeUpdate = () => {
-      const currentAbsFrame = Math.round(video.currentTime * fps);
-      const idx = currentAbsFrame - frameStart;
-      const clamped = Math.max(0, Math.min(totalAnalysedFrames - 1, idx));
-      setCurrentFrameIdx(clamped);
+      const idx = Math.round(video.currentTime * fps) - frameStart;
+      setCurrentFrameIdx(Math.max(0, Math.min(totalAnalysedFrames - 1, idx)));
     };
     video.addEventListener("timeupdate", handleTimeUpdate);
     return () => video.removeEventListener("timeupdate", handleTimeUpdate);
   }, [fps, frameStart, totalAnalysedFrames]);
 
-  // ── Seek video when frame nav buttons are pressed ────────────────
   function goToFrame(newIdx: number) {
     const clamped = Math.max(0, Math.min(totalAnalysedFrames - 1, newIdx));
     setCurrentFrameIdx(clamped);
-    const video = videoRef.current;
-    if (video) {
-      video.currentTime = (frameStart + clamped) / fps;
-    }
+    if (videoRef.current) videoRef.current.currentTime = (frameStart + clamped) / fps;
   }
 
-  // ── Draw trajectory canvas ───────────────────────────────────────
-  const W = 520, H = 280;
+  // Prevent page scroll when zooming on canvas
+  useEffect(() => {
+    const canvas = trajectoryCanvasRef.current;
+    if (!canvas) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setZoom(z => Math.max(0.5, Math.min(8, z * delta)));
+    };
+    canvas.addEventListener("wheel", handler, { passive: false });
+    return () => canvas.removeEventListener("wheel", handler);
+  }, []);
+
+  // ── Canvas drawing ───────────────────────────────────────────────
+  const W = 800, H = 420;
+  const pad = 52;
+
+  const getBounds = useCallback(() => {
+    const allX = [...xs, ...(showGhost && result.predicted_trajectory ? result.predicted_trajectory.x_positions_m : [])];
+    const allY = [...ys, ...(showGhost && result.predicted_trajectory ? result.predicted_trajectory.y_positions_m : [])];
+    return {
+      minX: Math.min(...allX), maxX: Math.max(...allX),
+      minY: Math.min(...allY), maxY: Math.max(...allY),
+    };
+  }, [xs, ys, showGhost, result.predicted_trajectory]);
+
+  const toCanvas = useCallback((x: number, y: number, bounds: ReturnType<typeof getBounds>): [number, number] => {
+    const { minX, maxX, minY, maxY } = bounds;
+    const cx = pad + ((x - minX) / (maxX - minX || 1)) * (W - pad * 2);
+    const cy = H - pad - ((y - minY) / (maxY - minY || 1)) * (H - pad * 2);
+    // Apply zoom and pan
+    return [
+      (cx - W / 2) * zoom + W / 2 + pan.x,
+      (cy - H / 2) * zoom + H / 2 + pan.y,
+    ];
+  }, [zoom, pan]);
+
+  const fromCanvas = useCallback((cx: number, cy: number, bounds: ReturnType<typeof getBounds>): [number, number] => {
+    const { minX, maxX, minY, maxY } = bounds;
+    const ux = (cx - W / 2 - pan.x) / zoom + W / 2;
+    const uy = (cy - H / 2 - pan.y) / zoom + H / 2;
+    const x = minX + ((ux - pad) / (W - pad * 2)) * (maxX - minX);
+    const y = maxY - ((uy - pad) / (H - pad * 2)) * (maxY - minY);
+    return [x, y];
+  }, [zoom, pan]);
 
   const drawTrajectory = useCallback(() => {
     const canvas = trajectoryCanvasRef.current;
@@ -106,57 +156,58 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     if (!ctx) return;
     ctx.clearRect(0, 0, W, H);
 
-    const allX = [...xs, ...(showGhost && result.predicted_trajectory ? result.predicted_trajectory.x_positions_m : [])];
-    const allY = [...ys, ...(showGhost && result.predicted_trajectory ? result.predicted_trajectory.y_positions_m : [])];
-    const minX = Math.min(...allX), maxX = Math.max(...allX);
-    const minY = Math.min(...allY), maxY = Math.max(...allY);
-    const pad  = 44;
-
-    function toCanvas(x: number, y: number): [number, number] {
-      const cx = pad + ((x - minX) / (maxX - minX || 1)) * (W - pad * 2);
-      const cy = H - pad - ((y - minY) / (maxY - minY || 1)) * (H - pad * 2);
-      return [cx, cy];
-    }
+    const bounds = getBounds();
+    const { minX, maxX, minY, maxY } = bounds;
 
     // Background
     ctx.fillStyle = "#0d0d1a";
     ctx.fillRect(0, 0, W, H);
 
     // Grid + numbers
-    const xSteps = 5, ySteps = 4;
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    const xSteps = 7, ySteps = 5;
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 1;
     for (let i = 0; i <= ySteps; i++) {
-      const gy = pad + (i / ySteps) * (H - pad * 2);
-      ctx.beginPath(); ctx.moveTo(pad, gy); ctx.lineTo(W - pad, gy); ctx.stroke();
       const yVal = maxY - (i / ySteps) * (maxY - minY);
-      ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "9px monospace"; ctx.textAlign = "right";
-      ctx.fillText(yVal.toFixed(1), pad - 4, gy + 3);
+      const [, gy] = toCanvas(minX, yVal, bounds);
+      ctx.beginPath(); ctx.moveTo(pad * zoom, gy); ctx.lineTo(W - pad * zoom, gy); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "10px monospace"; ctx.textAlign = "right";
+      ctx.fillText(yVal.toFixed(2), pad - 4, gy + 3);
     }
     for (let i = 0; i <= xSteps; i++) {
-      const gx = pad + (i / xSteps) * (W - pad * 2);
-      ctx.beginPath(); ctx.moveTo(gx, pad); ctx.lineTo(gx, H - pad); ctx.stroke();
       const xVal = minX + (i / xSteps) * (maxX - minX);
-      ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "9px monospace"; ctx.textAlign = "center";
-      ctx.fillText(xVal.toFixed(1), gx, H - pad + 12);
+      const [gx] = toCanvas(xVal, minY, bounds);
+      ctx.beginPath(); ctx.moveTo(gx, pad * zoom); ctx.lineTo(gx, H - pad * zoom); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "10px monospace"; ctx.textAlign = "center";
+      ctx.fillText(xVal.toFixed(2), gx, H - pad + 14);
     }
-    ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.font = "10px monospace"; ctx.textAlign = "center";
-    ctx.fillText("x (m)", W / 2, H - 4);
-    ctx.save(); ctx.translate(10, H / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+    ctx.fillText("x (m)", W / 2, H - 6);
+    ctx.save(); ctx.translate(14, H / 2); ctx.rotate(-Math.PI / 2);
     ctx.fillText("y (m)", 0, 0); ctx.restore();
 
-    // Tracked trajectory line
+    // Zoom level indicator
+    if (zoom !== 1) {
+      ctx.fillStyle = "rgba(127,119,221,0.8)";
+      ctx.font = "11px monospace"; ctx.textAlign = "right";
+      ctx.fillText(`${zoom.toFixed(1)}×`, W - 8, 18);
+    }
+
+    // Tracked trajectory
     ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 2.5; ctx.lineJoin = "round";
     ctx.beginPath();
-    xs.forEach((x, i) => { const [cx,cy] = toCanvas(x, ys[i]); i===0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy); });
+    xs.forEach((x, i) => {
+      const [cx, cy] = toCanvas(x, ys[i], bounds);
+      i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+    });
     ctx.stroke();
 
     // Strobe dots
     if (showStrobe) {
       xs.forEach((x, i) => {
-        const [cx,cy] = toCanvas(x, ys[i]);
+        const [cx, cy] = toCanvas(x, ys[i], bounds);
         ctx.fillStyle = "rgba(127,119,221,0.5)";
-        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
       });
     }
 
@@ -164,82 +215,163 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     if (showGhost && result.predicted_trajectory) {
       const gx2 = result.predicted_trajectory.x_positions_m;
       const gy2 = result.predicted_trajectory.y_positions_m;
-      ctx.strokeStyle = "rgba(127,119,221,0.7)"; ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+      ctx.strokeStyle = "rgba(127,119,221,0.7)"; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
       ctx.beginPath();
-      gx2.forEach((x, i) => { const [cx,cy] = toCanvas(x, gy2[i]); i===0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy); });
+      gx2.forEach((x, i) => {
+        const [cx, cy] = toCanvas(x, gy2[i], bounds);
+        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      });
       ctx.stroke(); ctx.setLineDash([]);
     }
 
-    // Start / end dots with coordinate labels
-    const [sx, sy] = toCanvas(xs[0], ys[0]);
-    const [ex, ey] = toCanvas(xs[xs.length - 1], ys[ys.length - 1]);
-
-    // Helper to draw a labelled point
+    // Start / end labelled points
     function drawLabelledPoint(px: number, py: number, label: string, alignRight: boolean) {
       if (!ctx) return;
-      // Dot
       ctx.fillStyle = "#FFD700";
       ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
-      // White ring
       ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.stroke();
-      // Background pill
       const lines2 = label.split("\n");
-      const lineH2 = 13;
-      const boxW2 = 110;
-      const boxH2 = lines2.length * lineH2 + 8;
-      const bx2 = alignRight ? px - boxW2 - 10 : px + 12;
-      const by3 = py - boxH2 / 2;
-      ctx.fillStyle = "rgba(0,0,0,0.75)";
-      ctx.beginPath();
-      ctx.roundRect(bx2, by3, boxW2, boxH2, 4);
-      ctx.fill();
-      // Label text
-      ctx.fillStyle = "#FFD700";
-      ctx.font = "9px monospace";
-      ctx.textAlign = "left";
+      const lineH2 = 14, boxW2 = 120, boxH2 = lines2.length * lineH2 + 10;
+      const bx2 = alignRight ? Math.max(4, px - boxW2 - 12) : Math.min(px + 12, W - boxW2 - 4);
+      const by3 = Math.max(4, Math.min(py - boxH2 / 2, H - boxH2 - 4));
+      ctx.fillStyle = "rgba(0,0,0,0.8)";
+      ctx.beginPath(); ctx.roundRect(bx2, by3, boxW2, boxH2, 5); ctx.fill();
+      ctx.strokeStyle = "rgba(255,215,0,0.3)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(bx2, by3, boxW2, boxH2, 5); ctx.stroke();
+      ctx.fillStyle = "#FFD700"; ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
       lines2.forEach((ln, i) => {
-        ctx.fillText(ln, bx2 + 6, by3 + 11 + i * lineH2);
+        ctx.fillStyle = i === 0 ? "#FFD700" : "rgba(255,255,255,0.7)";
+        ctx.font = i === 0 ? "bold 10px monospace" : "10px monospace";
+        ctx.fillText(ln, bx2 + 7, by3 + 13 + i * lineH2);
       });
     }
 
-    const startLabel = `start\nt=${result.timestamps[0].toFixed(3)}s\nx=${xs[0].toFixed(3)}m\ny=${ys[0].toFixed(3)}m`;
-    const endLabel   = `end\nt=${result.timestamps[result.timestamps.length-1].toFixed(3)}s\nx=${xs[xs.length-1].toFixed(3)}m\ny=${ys[xs.length-1].toFixed(3)}m`;
-
+    const [sx, sy] = toCanvas(xs[0], ys[0], bounds);
+    const [ex, ey] = toCanvas(xs[xs.length - 1], ys[ys.length - 1], bounds);
+    const startLabel = `START\nt=${result.timestamps[0].toFixed(3)}s\nx=${xs[0].toFixed(3)}m\ny=${ys[0].toFixed(3)}m`;
+    const endLabel   = `END\nt=${result.timestamps[n-1].toFixed(3)}s\nx=${xs[n-1].toFixed(3)}m\ny=${ys[n-1].toFixed(3)}m`;
     drawLabelledPoint(sx, sy, startLabel, false);
     drawLabelledPoint(ex, ey, endLabel, true);
 
-    // Current frame indicator dot
+    // Current frame dot
     const fi = currentFrameIdx;
     if (fi >= 0 && fi < xs.length) {
-      const [bx, by] = toCanvas(xs[fi], ys[fi]);
-      ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI*2); ctx.stroke();
+      const [bx, by] = toCanvas(xs[fi], ys[fi], bounds);
+      ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(bx, by, 13, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = "#ffffff";
-      ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI*2); ctx.fill();
-      const absFrame = frameStart + fi;
-      const label = `f${absFrame}  (${xs[fi].toFixed(2)}, ${ys[fi].toFixed(2)}) m`;
-      ctx.fillStyle = "rgba(0,0,0,0.7)";
-      const lx = Math.min(bx + 14, W - 125), ly = Math.max(by - 10, 14);
-      ctx.fillRect(lx - 2, ly - 10, label.length * 5.8 + 4, 14);
-      ctx.fillStyle = "#fff"; ctx.font = "9px monospace"; ctx.textAlign = "left";
-      ctx.fillText(label, lx, ly);
+      ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill();
     }
-  }, [xs, ys, showGhost, showStrobe, result.predicted_trajectory, currentFrameIdx, frameStart]);
+
+    // Hover tooltip
+    if (hoverPoint) {
+      const { idx, cx: hx, cy: hy } = hoverPoint;
+      // Snap circle
+      ctx.strokeStyle = "#7F77DD"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(hx, hy, 10, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(127,119,221,0.3)";
+      ctx.beginPath(); ctx.arc(hx, hy, 10, 0, Math.PI * 2); ctx.fill();
+
+      // Crosshair lines
+      ctx.strokeStyle = "rgba(127,119,221,0.3)"; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(hx, pad); ctx.lineTo(hx, H - pad); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pad, hy); ctx.lineTo(W - pad, hy); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Tooltip box
+      const netV = netVelocities[idx] ?? 0;
+      const tipLines = [
+        `frame ${frameStart + idx}`,
+        `t  = ${result.timestamps[idx]?.toFixed(3)} s`,
+        `x  = ${xs[idx]?.toFixed(3)} m`,
+        `y  = ${ys[idx]?.toFixed(3)} m`,
+        `vx = ${vxArr[idx]?.toFixed(3)} m/s`,
+        `vy = ${vyArr[idx]?.toFixed(3)} m/s`,
+        `|v|= ${netV.toFixed(3)} m/s`,
+      ];
+      const tipW = 155, tipH = tipLines.length * 16 + 14;
+      const tx = hx + 16 + tipW > W ? hx - tipW - 16 : hx + 16;
+      const ty = hy - tipH / 2;
+      ctx.fillStyle = "rgba(10,10,20,0.92)";
+      ctx.beginPath(); ctx.roundRect(tx, ty, tipW, tipH, 6); ctx.fill();
+      ctx.strokeStyle = "#7F77DD"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(tx, ty, tipW, tipH, 6); ctx.stroke();
+      tipLines.forEach((ln, i) => {
+        ctx.fillStyle = i === 0 ? "#AFA9EC" : "rgba(255,255,255,0.8)";
+        ctx.font = i === 0 ? "bold 10px monospace" : "10px monospace";
+        ctx.textAlign = "left";
+        ctx.fillText(ln, tx + 8, ty + 12 + i * 16);
+      });
+
+      // Click hint
+      ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "9px monospace";
+      ctx.fillText("click to seek video", tx + 8, ty + tipH - 4);
+    }
+  }, [xs, ys, showGhost, showStrobe, result, currentFrameIdx, frameStart, hoverPoint, zoom, pan, getBounds, toCanvas, netVelocities, vxArr, vyArr, n]);
 
   useEffect(() => { drawTrajectory(); }, [drawTrajectory]);
 
-  // Current frame data
-  const currentAbsFrame  = frameStart + currentFrameIdx;
-  const currentX         = xs[currentFrameIdx]?.toFixed(3) ?? "—";
-  const currentY         = ys[currentFrameIdx]?.toFixed(3) ?? "—";
-  const currentVx        = vxArr[currentFrameIdx]?.toFixed(3) ?? "—";
-  const currentVy        = vyArr[currentFrameIdx]?.toFixed(3) ?? "—";
-  const currentNetV      = netVelocities[currentFrameIdx]?.toFixed(3) ?? "—";
-  const detectionSet     = new Set((analysis?.detections ?? []).map(([f]) => f));
-  const currentDetected  = detectionSet.has(currentAbsFrame);
+  // ── Canvas mouse events ──────────────────────────────────────────
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isPanning.current) {
+      didDrag.current = true;
+      const dx = e.clientX - lastMouse.current.x;
+      const dy = e.clientY - lastMouse.current.y;
+      setPan(p => ({ x: p.x + dx, y: p.y + dy }));
+      lastMouse.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    const canvas = trajectoryCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (W / rect.width);
+    const my = (e.clientY - rect.top) * (H / rect.height);
+    const bounds = getBounds();
 
-  // Video URLs
+    // Find nearest point
+    let nearest = -1, nearDist = Infinity;
+    xs.forEach((x, i) => {
+      const [cx, cy] = toCanvas(x, ys[i], bounds);
+      const d = Math.hypot(cx - mx, cy - my);
+      if (d < nearDist) { nearDist = d; nearest = i; }
+    });
+    if (nearest >= 0 && nearDist < 30) {
+      const [cx, cy] = toCanvas(xs[nearest], ys[nearest], bounds);
+      setHoverPoint({ idx: nearest, cx, cy });
+    } else {
+      setHoverPoint(null);
+    }
+  }, [xs, ys, getBounds, toCanvas]);
+
+  const didDrag = useRef(false);
+
+  const handleCanvasClick = useCallback(() => {
+    if (!didDrag.current && hoverPoint) goToFrame(hoverPoint.idx);
+    didDrag.current = false;
+  }, [hoverPoint]);
+
+ const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    isPanning.current = true;
+    setPanning(true);
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isPanning.current = false;
+    setPanning(false);
+  }, []);
+
+  // Current frame data
+  const currentAbsFrame = frameStart + currentFrameIdx;
+  const currentX        = xs[currentFrameIdx]?.toFixed(3) ?? "—";
+  const currentY        = ys[currentFrameIdx]?.toFixed(3) ?? "—";
+  const currentVx       = vxArr[currentFrameIdx]?.toFixed(3) ?? "—";
+  const currentVy       = vyArr[currentFrameIdx]?.toFixed(3) ?? "—";
+  const currentNetV     = netVelocities[currentFrameIdx]?.toFixed(3) ?? "—";
+  const detectionSet    = new Set((analysis?.detections ?? []).map(([f]) => f));
+  const currentDetected = detectionSet.has(currentAbsFrame);
+
   const originalVideoUrl = uploadData ? `${BASE}/video/${uploadData.video_id}` : "";
   const overlayVideoUrl  = analysis?.has_overlay ? `${BASE}/overlay/${analysis.video_id}` : "";
 
@@ -394,123 +526,107 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         </div>
       )}
 
-      {/* Video + Trajectory side by side */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px", marginBottom:"16px", alignItems:"start" }}>
+      {/* ── Full-width video player ── */}
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:"12px", overflow:"hidden", marginBottom:"16px" }}>
+        {/* Tabs */}
+        <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+          {(["original","overlay"] as const).map(tab => (
+            <button key={tab} onClick={() => setVideoTab(tab)} style={{
+              flex:1, padding:"10px", fontSize:"12px", fontWeight:600, border:"none", cursor:"pointer",
+              background: videoTab===tab ? "rgba(127,119,221,0.15)" : "transparent",
+              color: videoTab===tab ? "#AFA9EC" : "rgba(255,255,255,0.35)",
+              borderBottom: videoTab===tab ? "2px solid #7F77DD" : "2px solid transparent",
+            }}>
+              {tab === "original" ? "Original" : "Overlay (annotated)"}
+            </button>
+          ))}
+        </div>
 
-        {/* Left — Video player */}
-        <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:"12px", overflow:"hidden" }}>
-
-          {/* Tabs */}
-          <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
-            {(["original","overlay"] as const).map(tab => (
-              <button key={tab} onClick={() => setVideoTab(tab)} style={{
-                flex:1, padding:"10px", fontSize:"12px", fontWeight:600, border:"none", cursor:"pointer",
-                background: videoTab===tab ? "rgba(127,119,221,0.15)" : "transparent",
-                color: videoTab===tab ? "#AFA9EC" : "rgba(255,255,255,0.35)",
-                borderBottom: videoTab===tab ? "2px solid #7F77DD" : "2px solid transparent",
-              }}>
-                {tab === "original" ? "Original" : "Overlay (annotated)"}
-              </button>
-            ))}
-          </div>
-
-          {/* Video */}
-          <div style={{ position:"relative", background:"#0a0a12" }}>
-            {videoTab === "original" && originalVideoUrl && (
-              <video
-                ref={videoRef}
-                src={originalVideoUrl}
-                controls
-                style={{ width:"100%", display:"block" }}
-              />
-            )}
-            {videoTab === "overlay" && (
-              overlayVideoUrl ? (
-                <video
-                  src={overlayVideoUrl}
-                  controls
-                  style={{ width:"100%", display:"block" }}
-                />
-              ) : (
-                <div style={{ padding:"32px", textAlign:"center", color:"rgba(255,255,255,0.25)", fontSize:"13px" }}>
-                  No overlay available — re-run analysis to generate one
-                </div>
-              )
-            )}
-
-            {/* Detection badge — only on original tab */}
-            {videoTab === "original" && (
-              <div style={{ position:"absolute", top:"8px", right:"8px",
-                background: currentDetected ? "rgba(93,202,165,0.2)" : "rgba(255,180,0,0.15)",
-                border:`1px solid ${currentDetected?"rgba(93,202,165,0.4)":"rgba(255,180,0,0.3)"}`,
-                borderRadius:"6px", padding:"3px 8px", fontSize:"10px",
-                color: currentDetected?"#5DCAA5":"#FFB400" }}>
-                {currentDetected ? "✓ detected" : "interpolated"}
-              </div>
-            )}
-          </div>
-
-          {/* Frame nav controls */}
+        {/* Video */}
+        <div style={{ position:"relative", background:"#0a0a12" }}>
+          {videoTab === "original" && originalVideoUrl && (
+            <video ref={videoRef} src={originalVideoUrl} controls style={{ width:"100%", display:"block", maxHeight:"500px" }} />
+          )}
+          {videoTab === "overlay" && (
+            overlayVideoUrl
+              ? <video src={overlayVideoUrl} controls style={{ width:"100%", display:"block", maxHeight:"500px" }} />
+              : <div style={{ padding:"48px", textAlign:"center", color:"rgba(255,255,255,0.25)", fontSize:"13px" }}>No overlay available — re-run analysis to generate one</div>
+          )}
           {videoTab === "original" && (
-            <div style={{ padding:"12px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
-              {/* Frame info */}
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"8px" }}>
-                <span style={{ fontSize:"11px", fontFamily:"monospace", color:"rgba(255,255,255,0.5)" }}>
-                  frame {currentAbsFrame} / {frameEnd}
-                </span>
-                <span style={{ fontSize:"11px", color:"rgba(255,255,255,0.3)" }}>
-                  t = {result.timestamps[currentFrameIdx]?.toFixed(3) ?? "—"} s
-                </span>
-              </div>
-
-              {/* Jump buttons */}
-              <div style={{ display:"flex", gap:"6px", alignItems:"center", flexWrap:"wrap", marginBottom:"10px" }}>
-                <NavBtn onClick={() => goToFrame(0)} label="⏮" title="First frame" />
-                <NavBtn onClick={() => goToFrame(currentFrameIdx - jumpSize)} label={`−${jumpSize}`} title={`Back ${jumpSize} frames`} />
-                <NavBtn onClick={() => goToFrame(currentFrameIdx - 1)} label="←" title="Previous frame" />
-                <NavBtn onClick={() => goToFrame(currentFrameIdx + 1)} label="→" title="Next frame" />
-                <NavBtn onClick={() => goToFrame(currentFrameIdx + jumpSize)} label={`+${jumpSize}`} title={`Forward ${jumpSize} frames`} />
-                <NavBtn onClick={() => goToFrame(totalAnalysedFrames - 1)} label="⏭" title="Last frame" />
-
-                {/* Jump size */}
-                <div style={{ display:"flex", alignItems:"center", gap:"4px", marginLeft:"auto" }}>
-                  <span style={{ fontSize:"11px", color:"rgba(255,255,255,0.35)" }}>jump</span>
-                  <input type="number" min={1} max={totalAnalysedFrames} value={jumpInput}
-                    onChange={e => setJumpInput(e.target.value)}
-                    onBlur={() => { const v = parseInt(jumpInput); if (!isNaN(v) && v > 0) setJumpSize(v); else setJumpInput(String(jumpSize)); }}
-                    style={{ width:"44px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"6px", padding:"4px 6px", color:"#fff", fontSize:"11px", textAlign:"center" }} />
-                  <span style={{ fontSize:"11px", color:"rgba(255,255,255,0.35)" }}>frames</span>
-                </div>
-              </div>
-
-              {/* Current frame stats */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"6px" }}>
-                {[["x", `${currentX} m`],["y", `${currentY} m`],["|v|", `${currentNetV} m/s`],["vx", `${currentVx} m/s`],["vy", `${currentVy} m/s`],["t", `${result.timestamps[currentFrameIdx]?.toFixed(3)??"—"} s`]].map(([label, val]) => (
-                  <div key={label} style={{ background:"rgba(255,255,255,0.03)", borderRadius:"6px", padding:"5px 8px" }}>
-                    <div style={{ fontSize:"9px", color:"rgba(255,255,255,0.3)", marginBottom:"2px" }}>{label}</div>
-                    <div style={{ fontSize:"11px", fontFamily:"monospace", color:"#fff" }}>{val}</div>
-                  </div>
-                ))}
-              </div>
+            <div style={{ position:"absolute", top:"8px", right:"8px",
+              background: currentDetected ? "rgba(93,202,165,0.2)" : "rgba(255,180,0,0.15)",
+              border:`1px solid ${currentDetected?"rgba(93,202,165,0.4)":"rgba(255,180,0,0.3)"}`,
+              borderRadius:"6px", padding:"3px 8px", fontSize:"10px",
+              color: currentDetected?"#5DCAA5":"#FFB400" }}>
+              {currentDetected ? "✓ detected" : "interpolated"}
             </div>
           )}
         </div>
 
-        {/* Right — Trajectory chart */}
-        <div style={{ background:"#0d0d1a", border:"1px solid rgba(255,255,255,0.08)", borderRadius:"12px", padding:"14px" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"10px" }}>
-            <div style={{ fontSize:"13px", fontWeight:600 }}>Trajectory</div>
-            <div style={{ display:"flex", gap:"12px" }}>
-              <LegendDot color="#FFD700" label="tracked" dashed={false} />
-              <LegendDot color="rgba(255,255,255,0.8)" label="current" dashed={false} dot />
-              {showGhost && result.predicted_trajectory && <LegendDot color="rgba(127,119,221,0.9)" label="ghost" dashed />}
+        {/* Frame nav — only original */}
+        {videoTab === "original" && (
+          <div style={{ padding:"14px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"8px" }}>
+              <span style={{ fontSize:"11px", fontFamily:"monospace", color:"rgba(255,255,255,0.5)" }}>frame {currentAbsFrame} / {frameEnd}</span>
+              <span style={{ fontSize:"11px", color:"rgba(255,255,255,0.3)" }}>t = {result.timestamps[currentFrameIdx]?.toFixed(3) ?? "—"} s</span>
+            </div>
+            <div style={{ display:"flex", gap:"6px", alignItems:"center", flexWrap:"wrap", marginBottom:"10px" }}>
+              <NavBtn onClick={() => goToFrame(0)} label="⏮" title="First" />
+              <NavBtn onClick={() => goToFrame(currentFrameIdx - jumpSize)} label={`−${jumpSize}`} title={`Back ${jumpSize}`} />
+              <NavBtn onClick={() => goToFrame(currentFrameIdx - 1)} label="←" title="Prev" />
+              <NavBtn onClick={() => goToFrame(currentFrameIdx + 1)} label="→" title="Next" />
+              <NavBtn onClick={() => goToFrame(currentFrameIdx + jumpSize)} label={`+${jumpSize}`} title={`Fwd ${jumpSize}`} />
+              <NavBtn onClick={() => goToFrame(totalAnalysedFrames - 1)} label="⏭" title="Last" />
+              <div style={{ display:"flex", alignItems:"center", gap:"4px", marginLeft:"auto" }}>
+                <span style={{ fontSize:"11px", color:"rgba(255,255,255,0.35)" }}>jump</span>
+                <input type="number" min={1} max={totalAnalysedFrames} value={jumpInput}
+                  onChange={e => setJumpInput(e.target.value)}
+                  onBlur={() => { const v = parseInt(jumpInput); if (!isNaN(v) && v > 0) setJumpSize(v); else setJumpInput(String(jumpSize)); }}
+                  style={{ width:"44px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"6px", padding:"4px 6px", color:"#fff", fontSize:"11px", textAlign:"center" }} />
+                <span style={{ fontSize:"11px", color:"rgba(255,255,255,0.35)" }}>frames</span>
+              </div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(6, 1fr)", gap:"6px" }}>
+              {[["x", `${currentX} m`],["y", `${currentY} m`],["|v|", `${currentNetV} m/s`],["vx", `${currentVx} m/s`],["vy", `${currentVy} m/s`],["t", `${result.timestamps[currentFrameIdx]?.toFixed(3)??"—"} s`]].map(([label, val]) => (
+                <div key={label} style={{ background:"rgba(255,255,255,0.03)", borderRadius:"6px", padding:"5px 8px" }}>
+                  <div style={{ fontSize:"9px", color:"rgba(255,255,255,0.3)", marginBottom:"2px" }}>{label}</div>
+                  <div style={{ fontSize:"11px", fontFamily:"monospace", color:"#fff" }}>{val}</div>
+                </div>
+              ))}
             </div>
           </div>
-          <canvas ref={trajectoryCanvasRef} width={W} height={H} style={{ width:"100%", borderRadius:"6px" }} />
-          <div style={{ display:"flex", gap:"8px", marginTop:"10px" }}>
-            <Toggle label="Ghost" value={showGhost} onChange={setShowGhost} disabled={!result.predicted_trajectory} />
-            <Toggle label="Strobe" value={showStrobe} onChange={setShowStrobe} />
+        )}
+      </div>
+
+      {/* ── Full-width trajectory chart ── */}
+      <div style={{ background:"#0d0d1a", border:"1px solid rgba(255,255,255,0.08)", borderRadius:"12px", padding:"16px", marginBottom:"16px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"10px" }}>
+          <div style={{ fontSize:"13px", fontWeight:600 }}>Trajectory</div>
+          <div style={{ display:"flex", gap:"16px", alignItems:"center" }}>
+            <span style={{ fontSize:"10px", color:"rgba(255,255,255,0.3)" }}>scroll to zoom · drag to pan · hover for data · click to seek</span>
+            {zoom !== 1 && (
+              <button onClick={() => { setZoom(1); setPan({ x:0, y:0 }); }} style={{ fontSize:"11px", background:"rgba(127,119,221,0.15)", border:"1px solid rgba(127,119,221,0.3)", color:"#AFA9EC", borderRadius:"6px", padding:"3px 8px", cursor:"pointer" }}>
+                Reset zoom
+              </button>
+            )}
+            <LegendDot color="#FFD700" label="tracked" dashed={false} />
+            <LegendDot color="rgba(255,255,255,0.8)" label="current" dashed={false} dot />
+            {showGhost && result.predicted_trajectory && <LegendDot color="rgba(127,119,221,0.9)" label="ghost" dashed />}
           </div>
+        </div>
+        <canvas
+          ref={trajectoryCanvasRef}
+          width={W} height={H}
+          style={{ width:"100%", borderRadius:"6px", cursor: hoverPoint ? "pointer" : panning ? "grabbing" : "crosshair" }}
+          onMouseMove={handleCanvasMouseMove}
+          onClick={handleCanvasClick}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={() => { setHoverPoint(null); isPanning.current = false; setPanning(false); }}
+        />
+        <div style={{ display:"flex", gap:"8px", marginTop:"10px" }}>
+          <Toggle label="Ghost" value={showGhost} onChange={setShowGhost} disabled={!result.predicted_trajectory} />
+          <Toggle label="Strobe" value={showStrobe} onChange={setShowStrobe} />
         </div>
       </div>
 
