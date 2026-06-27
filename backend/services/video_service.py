@@ -105,7 +105,7 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path,
             for i in range(1, len(ghost_points)):
                 if i % 2 == 0:
                     cv2.line(frame, ghost_points[i-1], ghost_points[i],
-                             (255, 100, 180), 6) # solid purple — tracked path
+                             (255, 100, 180), 6)  # solid purple — tracked path
             if ghost_points:
                 cv2.putText(frame, "ideal (no drag)",
                             (ghost_points[-1][0] + 10, ghost_points[-1][1]),
@@ -121,7 +121,7 @@ def render_overlay(video_path, start_frame, end_frame, detections, out_path,
         if len(past_points) >= 2:
             for i in range(1, len(past_points)):
                 cv2.line(frame, past_points[i-1], past_points[i],
-                         (0, 215, 255), 8)   # gold BGR, thick 
+                         (0, 215, 255), 8)  # gold BGR, thick
         # Tracked label
         if len(past_points) >= 2:
             cv2.putText(frame, "tracked",
