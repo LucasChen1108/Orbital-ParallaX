@@ -1,4 +1,4 @@
-# ParallaX — Projectile Motion Analyser
+# ArcLab — Projectile Motion Analyser
 
 A web application that uses computer vision to analyse projectile motion from uploaded videos.
 Upload a video, click the ball, set calibration points, and get real physics data.
