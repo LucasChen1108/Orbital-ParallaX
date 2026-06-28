@@ -2,6 +2,8 @@
 import { useRef, useEffect, useState } from "react";
 import { CalibrationPoints } from "../types/analysis";
 
+const G = "#2563a8";
+
 interface Props {
   videoId: string;
   frameIndex: number;
@@ -24,41 +26,29 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     points.forEach((p, i) => {
-      // Point circle
-      ctx.fillStyle = "#7F77DD";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-      ctx.fill();
-      // Number label
+      ctx.fillStyle = G;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#fff";
       ctx.font = "bold 11px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(String(i + 1), p.x, p.y);
     });
 
     if (points.length === 2) {
-      // Connecting line
-      ctx.strokeStyle = "#FFD700";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 3]);
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       ctx.lineTo(points[1].x, points[1].y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Distance label at midpoint
+      ctx.stroke(); ctx.setLineDash([]);
       const mx = (points[0].x + points[1].x) / 2;
       const my = (points[0].y + points[1].y) / 2;
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.beginPath();
-      ctx.roundRect(mx - 28, my - 10, 56, 20, 4);
-      ctx.fill();
-      ctx.fillStyle = "#FFD700";
-      ctx.font = "11px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath(); ctx.roundRect(mx - 30, my - 11, 60, 22, 4); ctx.fill();
+      ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(mx - 30, my - 11, 60, 22, 4); ctx.stroke();
+      ctx.fillStyle = "#374151";
+      ctx.font = "11px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(distance ? `${distance}m` : "? m", mx, my);
     }
   }, [points, distance]);
@@ -84,31 +74,31 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
 
   return (
     <div>
-      <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)", marginBottom: "20px" }}>
+      <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>
         Click 2 points on the frame whose real-world distance you know (e.g. a ruler, a door, a metre stick).
       </p>
 
-      {/* Progress indicator */}
+      {/* Progress */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
         {[1, 2].map(n => (
           <div key={n} style={{
             display: "flex", alignItems: "center", gap: "6px",
-            padding: "6px 12px", borderRadius: "8px", fontSize: "12px",
-            background: points.length >= n ? "rgba(127,119,221,0.15)" : "rgba(255,255,255,0.03)",
-            border: `1px solid ${points.length >= n ? "rgba(127,119,221,0.4)" : "rgba(255,255,255,0.08)"}`,
-            color: points.length >= n ? "#AFA9EC" : "rgba(255,255,255,0.25)",
+            padding: "6px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 500,
+            background: points.length >= n ? "#eff6ff" : "#f9fafb",
+            border: `1px solid ${points.length >= n ? "#bfdbfe" : "#e5e7eb"}`,
+            color: points.length >= n ? G : "#9ca3af",
           }}>
             <div style={{
-              width: "18px", height: "18px", borderRadius: "50%", fontSize: "11px",
-              display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600,
-              background: points.length >= n ? "#7F77DD" : "rgba(255,255,255,0.08)",
-              color: points.length >= n ? "#fff" : "rgba(255,255,255,0.3)",
+              width: "20px", height: "20px", borderRadius: "50%", fontSize: "11px",
+              display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700,
+              background: points.length >= n ? G : "#e5e7eb",
+              color: points.length >= n ? "#fff" : "#9ca3af",
             }}>{n}</div>
             Point {n} {points.length >= n ? "✓" : ""}
           </div>
         ))}
         {points.length < 2 && (
-          <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)", alignSelf: "center", marginLeft: "4px" }}>
+          <div style={{ fontSize: "12px", color: "#9ca3af", alignSelf: "center" }}>
             — click {2 - points.length} more point{2 - points.length > 1 ? "s" : ""}
           </div>
         )}
@@ -117,14 +107,13 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
       {/* Frame + canvas */}
       <div style={{
         position: "relative", display: "inline-block", width: "100%",
-        borderRadius: "12px", overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`http://localhost:8000/api/v1/video/frame/${videoId}/${frameIndex}`}
           alt="calibration frame"
-          style={{ display: "block", width: "100%", maxWidth: "640px" }}
+          style={{ display: "block", width: "100%" }}
         />
         <canvas
           ref={canvasRef}
@@ -141,20 +130,17 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
       {/* Controls */}
       <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
         <div>
-          <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", display: "block", marginBottom: "8px" }}>
+          <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "8px", fontWeight: 500 }}>
             Real-world distance between the two points (metres)
           </label>
           <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={distance}
+            type="number" min="0.01" step="0.01" value={distance}
             onChange={e => setDistance(e.target.value)}
             placeholder="e.g. 1.0"
             style={{
-              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: "8px", padding: "10px 14px", color: "#fff", fontSize: "14px", width: "160px",
-              outline: "none",
+              background: "#fff", border: "1px solid #d1d5db",
+              borderRadius: "8px", padding: "10px 14px", color: "#111827",
+              fontSize: "14px", width: "160px", outline: "none",
             }}
           />
         </div>
@@ -164,10 +150,11 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
             onClick={handleConfirm}
             disabled={points.length < 2 || !distance || done}
             style={{
-              background: points.length < 2 || !distance || done ? "rgba(127,119,221,0.3)" : "#7F77DD",
+              background: points.length < 2 || !distance || done ? "#bfdbfe" : G,
               color: "#fff", border: "none", padding: "10px 24px",
               borderRadius: "10px", fontSize: "14px", fontWeight: 600,
               cursor: points.length < 2 || !distance || done ? "not-allowed" : "pointer",
+              boxShadow: points.length < 2 || !distance || done ? "none" : "0 1px 3px rgba(37,99,168,0.3)",
             }}
           >
             {done ? "✓ Calibration set" : "Confirm calibration →"}
@@ -177,8 +164,8 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
             <button
               onClick={() => setPoints([])}
               style={{
-                background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.4)", padding: "10px 16px",
+                background: "#fff", border: "1px solid #d1d5db",
+                color: "#6b7280", padding: "10px 16px",
                 borderRadius: "10px", fontSize: "13px", cursor: "pointer",
               }}
             >
@@ -190,8 +177,9 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
         {done && (
           <div style={{
             display: "flex", alignItems: "center", gap: "10px",
-            background: "rgba(93,202,165,0.08)", border: "1px solid rgba(93,202,165,0.25)",
-            borderRadius: "10px", padding: "12px 16px", fontSize: "13px", color: "#5DCAA5",
+            background: "#eff6ff", border: "1px solid #bfdbfe",
+            borderRadius: "10px", padding: "12px 16px", fontSize: "13px",
+            color: G, fontWeight: 500,
           }}>
             ✓ Calibration confirmed — {distance}m between points
           </div>

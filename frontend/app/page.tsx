@@ -25,19 +25,24 @@ const STEP_META = [
   { n: 6, label: "Results",   desc: "Your physics output." },
 ];
 
+// Colour tokens
+const G = "#2563a8";
+const GLIGHT = "#eff6ff";
+const GBORDER = "#bfdbfe";
+
 export default function Home() {
   const [step, setStep] = useState(1);
-  const [uploadData, setUploadData]     = useState<UploadResponse | null>(null);
-  const [startFrame, setStartFrame]     = useState(0);
-  const [endFrame, setEndFrame]         = useState(0);
-  const [colourData, setColourData]     = useState<SampleColourResponse | null>(null);
-  const [calibration, setCalibration]   = useState<CalibrationPoints | null>(null);
-  const [result, setResult]             = useState<PhysicsResult | null>(null);
-  const [analysing, setAnalysing]       = useState(false);
-  const [error, setError]               = useState<string | null>(null);
+  const [uploadData, setUploadData]   = useState<UploadResponse | null>(null);
+  const [startFrame, setStartFrame]   = useState(0);
+  const [endFrame, setEndFrame]       = useState(0);
+  const [colourData, setColourData]   = useState<SampleColourResponse | null>(null);
+  const [calibration, setCalibration] = useState<CalibrationPoints | null>(null);
+  const [result, setResult]           = useState<PhysicsResult | null>(null);
+  const [analysing, setAnalysing]     = useState(false);
+  const [error, setError]             = useState<string | null>(null);
   const [useAirResistance, setUseAirResistance] = useState(false);
-  const [method, setMethod]             = useState<"hsv" | "yolo">("hsv");
-  const [analysis, setAnalysis]         = useState<AnalysisResponse | null>(null);
+  const [method, setMethod]           = useState<"hsv" | "yolo">("hsv");
+  const [analysis, setAnalysis]       = useState<AnalysisResponse | null>(null);
 
   function loadMockResults() {
     if (MOCK_ANALYSIS.result) {
@@ -52,29 +57,19 @@ export default function Home() {
     setStep(2);
   }
 
-  // After the interval is confirmed, branch by method:
-  //   hsv  → Step 3 (pick ball colour) → Step 4 (calibration)
-  //   yolo → skip Step 3, jump straight to Step 4 (calibration)
   function handleConfirmInterval() {
-    if (method === "yolo") {
-      setColourData(null);   // no colour needed for YOLO
-      setStep(4);
-    } else {
-      setStep(3);
-    }
+    if (method === "yolo") { setColourData(null); setStep(4); }
+    else setStep(3);
   }
 
   function handleColourSampled(data: SampleColourResponse) {
-    setColourData(data);
-    setStep(4);
+    setColourData(data); setStep(4);
   }
 
   function handleCalibrated(data: CalibrationPoints) {
-    setCalibration(data);
-    setStep(5);
+    setCalibration(data); setStep(5);
   }
 
-  // Back button: for YOLO, step 4 goes back to 2 (no ball-pick step).
   function handleBack() {
     if (step === 4 && method === "yolo") setStep(2);
     else setStep(s => s - 1);
@@ -82,11 +77,8 @@ export default function Home() {
 
   async function handleAnalyse() {
     if (!uploadData || !calibration) return;
-    // HSV needs sampled colour; YOLO does not.
     if (method === "hsv" && !colourData) return;
-
-    setAnalysing(true);
-    setError(null);
+    setAnalysing(true); setError(null);
     try {
       const res = await analyseVideo(
         uploadData.video_id,
@@ -98,9 +90,7 @@ export default function Home() {
         method,
       );
       if (res.status === "success" && res.result) {
-        setResult(res.result);
-        setAnalysis(res);
-        setStep(6);
+        setResult(res.result); setAnalysis(res); setStep(6);
       } else {
         setError(res.error ?? "Analysis failed.");
       }
@@ -114,48 +104,47 @@ export default function Home() {
   const meta = STEP_META[step - 1];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a12", color: "#fff", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#f8f9fa", color: "#111827", fontFamily: "system-ui, sans-serif" }}>
       <Navbar currentStep={step} />
 
-      <main style={{ maxWidth: "860px", margin: "0 auto", padding: "40px 2rem" }}>
+      <main style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 2rem" }}>
 
         {/* Step header */}
-        <div style={{ marginBottom: "32px" }}>
-          <div style={{ fontSize: "11px", color: "#7F77DD", letterSpacing: "0.1em", marginBottom: "6px" }}>
+        <div style={{ marginBottom: "28px" }}>
+          <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", fontWeight: 600, marginBottom: "6px" }}>
             STEP {meta.n} OF 6
           </div>
-          <h1 style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "6px" }}>
+          <h1 style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "6px", color: "#111827" }}>
             {meta.label}
           </h1>
-          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.45)" }}>{meta.desc}</p>
+          <p style={{ fontSize: "14px", color: "#6b7280" }}>{meta.desc}</p>
         </div>
 
         {/* Card wrapper */}
         <div style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: "#ffffff",
+          border: "1px solid #e5e7eb",
           borderRadius: "16px",
           padding: "32px",
-          marginBottom: "24px",
+          marginBottom: "20px",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
         }}>
 
-          {/* Step 1 — Upload */}
-          {step === 1 && (
-            <VideoUploader onUploaded={handleUploaded} />
-          )}
+          {/* Step 1 */}
+          {step === 1 && <VideoUploader onUploaded={handleUploaded} />}
 
-          {/* Step 2 — Interval + tracking method */}
+          {/* Step 2 */}
           {step === 2 && uploadData && (
             <>
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
-                background: "rgba(127,119,221,0.1)", border: "1px solid rgba(127,119,221,0.2)",
-                borderRadius: "8px", padding: "6px 12px", marginBottom: "24px",
+                background: GLIGHT, border: `1px solid ${GBORDER}`,
+                borderRadius: "8px", padding: "6px 14px", marginBottom: "24px",
               }}>
-                <span style={{ fontSize: "12px", color: "#AFA9EC" }}>
-                  Detected FPS: <strong>{uploadData.fps}</strong>
+                <span style={{ fontSize: "12px", color: "#15803d", fontWeight: 500 }}>
+                  FPS: <strong>{uploadData.fps}</strong>
                   &nbsp;·&nbsp;
-                  Total frames: <strong>{uploadData.total_frames}</strong>
+                  Frames: <strong>{uploadData.total_frames}</strong>
                   &nbsp;·&nbsp;
                   Duration: <strong>{uploadData.duration_seconds.toFixed(1)}s</strong>
                 </span>
@@ -169,38 +158,37 @@ export default function Home() {
                 onEndChange={setEndFrame}
               />
 
-              {/* Tracking method selection */}
-              <div style={{ marginTop: "24px" }}>
-                <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "10px", color: "rgba(255,255,255,0.7)" }}>
+              {/* Tracking method */}
+              <div style={{ marginTop: "24px", padding: "20px", background: "#f8f9fa", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
+                <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "12px", color: "#374151" }}>
                   Tracking method
                 </div>
-                <label style={{ display: "block", marginBottom: "8px", cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="method"
-                    checked={method === "hsv"}
-                    onChange={() => setMethod("hsv")}
-                  />
-                  {" "}Colour (HSV) — you click the ball
-                </label>
-                <label style={{ display: "block", cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="method"
-                    checked={method === "yolo"}
-                    onChange={() => setMethod("yolo")}
-                  />
-                  {" "}YOLOv8 — automatic, no clicking
-                </label>
+                {[
+                  { val: "hsv", label: "Colour (HSV)", desc: "You click the ball to sample its colour" },
+                  { val: "yolo", label: "YOLOv8", desc: "Automatic detection, no clicking required" },
+                ].map(opt => (
+                  <label key={opt.val} style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", cursor: "pointer" }}>
+                    <input
+                      type="radio" name="method"
+                      checked={method === opt.val}
+                      onChange={() => setMethod(opt.val as "hsv" | "yolo")}
+                      style={{ accentColor: G, width: "16px", height: "16px" }}
+                    />
+                    <div>
+                      <span style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>{opt.label}</span>
+                      <span style={{ fontSize: "12px", color: "#6b7280", marginLeft: "8px" }}>{opt.desc}</span>
+                    </div>
+                  </label>
+                ))}
               </div>
 
-              <div style={{ marginTop: "28px" }}>
+              <div style={{ marginTop: "24px" }}>
                 <PrimaryButton onClick={handleConfirmInterval} label="Confirm interval →" />
               </div>
             </>
           )}
 
-          {/* Step 3 — Ball picker (HSV only) */}
+          {/* Step 3 */}
           {step === 3 && method === "hsv" && uploadData && (
             <BallPicker
               videoId={uploadData.video_id}
@@ -211,7 +199,7 @@ export default function Home() {
             />
           )}
 
-          {/* Step 4 — Calibration */}
+          {/* Step 4 */}
           {step === 4 && uploadData && (
             <CalibrationPicker
               videoId={uploadData.video_id}
@@ -222,45 +210,43 @@ export default function Home() {
             />
           )}
 
-          {/* Step 5 — Analyse */}
+          {/* Step 5 */}
           {step === 5 && (
             <div>
               <div style={{
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                background: "#f8f9fa", border: "1px solid #e5e7eb",
                 borderRadius: "12px", padding: "20px", marginBottom: "24px",
               }}>
-                <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "14px", color: "rgba(255,255,255,0.7)" }}>
-                  Options
+                <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "14px", color: "#374151" }}>
+                  Analysis options
                 </div>
-                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "16px" }}>
-                  Tracking method: <strong style={{ color: "#AFA9EC" }}>{method === "yolo" ? "YOLOv8" : "Colour (HSV)"}</strong>
+                <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>
+                  Tracking method: <strong style={{ color: G }}>{method === "yolo" ? "YOLOv8" : "Colour (HSV)"}</strong>
                 </div>
                 <label style={{ display: "flex", alignItems: "flex-start", gap: "12px", cursor: "pointer" }}>
-                  <div style={{ position: "relative", marginTop: "2px" }}>
+                  <div style={{ position: "relative", marginTop: "2px", flexShrink: 0 }}>
                     <input
-                      type="checkbox"
-                      checked={useAirResistance}
+                      type="checkbox" checked={useAirResistance}
                       onChange={e => setUseAirResistance(e.target.checked)}
                       style={{ opacity: 0, position: "absolute", width: 0, height: 0 }}
                     />
                     <div style={{
                       width: "36px", height: "20px", borderRadius: "10px",
-                      background: useAirResistance ? "#7F77DD" : "rgba(255,255,255,0.1)",
-                      border: "1px solid rgba(255,255,255,0.15)",
+                      background: useAirResistance ? G : "#d1d5db",
                       position: "relative", transition: "background 0.2s",
                     }}>
                       <div style={{
                         width: "14px", height: "14px", borderRadius: "50%", background: "#fff",
-                        position: "absolute", top: "2px",
-                        left: useAirResistance ? "18px" : "2px",
+                        position: "absolute", top: "3px",
+                        left: useAirResistance ? "19px" : "3px",
                         transition: "left 0.2s",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                       }} />
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: "14px", fontWeight: 500 }}>Consider air resistance</div>
-                    <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginTop: "3px" }}>
+                    <div style={{ fontSize: "14px", fontWeight: 500, color: "#111827" }}>Consider air resistance</div>
+                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "3px" }}>
                       Fits a quadratic drag model and returns an estimated drag coefficient alongside gravity.
                     </div>
                   </div>
@@ -269,9 +255,9 @@ export default function Home() {
 
               {error && (
                 <div style={{
-                  background: "rgba(220,50,50,0.1)", border: "1px solid rgba(220,50,50,0.3)",
+                  background: "#fef2f2", border: "1px solid #fecaca",
                   borderRadius: "10px", padding: "12px 16px",
-                  fontSize: "13px", color: "#FF8080", marginBottom: "20px",
+                  fontSize: "13px", color: "#dc2626", marginBottom: "20px",
                 }}>
                   {error}
                 </div>
@@ -285,36 +271,30 @@ export default function Home() {
             </div>
           )}
 
-          {/* Step 6 — Results */}
+          {/* Step 6 */}
           {step === 6 && result && (
-            <>
-              <ResultsPanel
-                result={result}
-                analysis={analysis}
-                uploadData={uploadData}
-                calibration={calibration}
-                frameRange={{ start_frame: startFrame, end_frame: endFrame }}
-                useAirResistance={useAirResistance}
-              />
-            </>
+            <ResultsPanel
+              result={result}
+              analysis={analysis}
+              uploadData={uploadData}
+              calibration={calibration}
+              frameRange={{ start_frame: startFrame, end_frame: endFrame }}
+              useAirResistance={useAirResistance}
+            />
           )}
-
         </div>
 
-        {/* Back link (steps 2–5) */}
+        {/* Back */}
         {step > 1 && step < 6 && (
-          <button
-            onClick={handleBack}
-            style={{
-              background: "transparent", border: "none", color: "rgba(255,255,255,0.3)",
-              fontSize: "13px", cursor: "pointer", padding: 0,
-            }}
-          >
+          <button onClick={handleBack} style={{
+            background: "transparent", border: "none", color: "#9ca3af",
+            fontSize: "13px", cursor: "pointer", padding: 0,
+          }}>
             ← Back
           </button>
         )}
 
-        {/* New analysis (step 6) */}
+        {/* New analysis */}
         {step === 6 && (
           <button
             onClick={() => {
@@ -323,8 +303,8 @@ export default function Home() {
               setAnalysis(null); setMethod("hsv");
             }}
             style={{
-              background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.5)", fontSize: "13px", cursor: "pointer",
+              background: "#fff", border: "1px solid #e5e7eb",
+              color: "#6b7280", fontSize: "13px", cursor: "pointer",
               padding: "8px 16px", borderRadius: "8px",
             }}
           >
@@ -332,15 +312,13 @@ export default function Home() {
           </button>
         )}
 
-        <div style={{ marginTop: "40px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <button
-            onClick={loadMockResults}
-            style={{
-              background: "transparent", border: "1px dashed rgba(127,119,221,0.3)",
-              color: "rgba(127,119,221,0.6)", padding: "8px 16px",
-              borderRadius: "8px", fontSize: "12px", cursor: "pointer",
-            }}
-          >
+        {/* Dev mock button */}
+        <div style={{ marginTop: "40px", paddingTop: "24px", borderTop: "1px solid #e5e7eb" }}>
+          <button onClick={loadMockResults} style={{
+            background: "transparent", border: `1px dashed ${GBORDER}`,
+            color: "#15803d", padding: "8px 16px",
+            borderRadius: "8px", fontSize: "12px", cursor: "pointer",
+          }}>
             ⚡ Skip to mock results (dev only)
           </button>
         </div>
@@ -351,17 +329,14 @@ export default function Home() {
 
 function PrimaryButton({ onClick, label, disabled }: { onClick: () => void; label: string; disabled?: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        background: disabled ? "rgba(127,119,221,0.3)" : "#7F77DD",
-        color: "#fff", border: "none", padding: "12px 28px",
-        borderRadius: "10px", fontSize: "14px", fontWeight: 600,
-        cursor: disabled ? "not-allowed" : "pointer",
-        transition: "background 0.15s",
-      }}
-    >
+    <button onClick={onClick} disabled={disabled} style={{
+      background: disabled ? "#86efac" : G,
+      color: "#fff", border: "none", padding: "12px 28px",
+      borderRadius: "10px", fontSize: "14px", fontWeight: 600,
+      cursor: disabled ? "not-allowed" : "pointer",
+      transition: "background 0.15s",
+      boxShadow: disabled ? "none" : "0 1px 3px rgba(22,163,74,0.3)",
+    }}>
       {label}
     </button>
   );

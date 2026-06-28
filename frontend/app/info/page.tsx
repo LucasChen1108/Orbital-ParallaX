@@ -1,6 +1,10 @@
 "use client";
 import Navbar from "../components/Navbar";
 
+const G = "#2563a8";
+const GLIGHT = "#eff6ff";
+const GBORDER = "#bfdbfe";
+
 const MEMBERS = [
   {
     name: "Chen Letao",
@@ -9,8 +13,9 @@ const MEMBERS = [
     github: "https://github.com/LucasChen1108",
     linkedin: "https://www.linkedin.com/in/lucas-letao-chen/",
     role: "Frontend, UI/UX & Architecture Lead",
-    colour: "#5DCAA5",
-    bg: "rgba(93,202,165,0.12)",
+    colour: "#2563a8",
+    bg: "#eff6ff",
+    border: "#bfdbfe",
     skills: ["Next.js / React", "FastAPI", "System Architecture", "UI/UX Design", "CI/CD"],
     note: "Designed and built the full system architecture, backend API, database layer, frontend UI/UX, and CI/CD pipeline for ArcLab. Previously contributed to Source Academy as part of CP3108.",
   },
@@ -21,8 +26,9 @@ const MEMBERS = [
     github: "https://github.com/lkeming43",
     linkedin: "https://www.linkedin.com/in/keming-liu-3360013a4/",
     role: "Physics & Computer Vision Lead",
-    colour: "#7F77DD",
-    bg: "rgba(127,119,221,0.12)",
+    colour: "#18c451",
+    bg: "#f0f4ff",
+    border: "#c7d2fe",
     skills: ["Physics modelling", "NumPy / SciPy", "YOLOv8", "Kinematics solver"],
     note: "Physics major specialising in inverse physics solvers and computer vision pipelines. Built the entire algorithm layer — CV tracker, kinematics solver, and drag model. Previously built a data analysis pipeline for DESI cosmological results.",
   },
@@ -58,33 +64,30 @@ const LinkedInIcon = () => (
 
 export default function InfoPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a12", color: "#fff", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#ffffff", color: "#111827", fontFamily: "system-ui, sans-serif" }}>
       <Navbar />
 
       {/* Hero */}
       <section style={{ maxWidth: "820px", margin: "0 auto", padding: "72px 2rem 56px", textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
-          <svg viewBox="0 0 72 72" width="64" height="64">
-            <circle cx="36" cy="36" r="34" stroke="rgba(127,119,221,0.2)" strokeWidth="1" fill="none"/>
-            <circle cx="36" cy="36" r="22" stroke="rgba(127,119,221,0.1)" strokeWidth="1" fill="none"/>
-            <path d="M 10 54 Q 36 8 62 54" stroke="#7F77DD" strokeWidth="2" fill="none" strokeLinecap="round"/>
-            <path d="M 62 54 Q 68 44 72 54" stroke="rgba(127,119,221,0.35)" strokeWidth="1.5" fill="none" strokeDasharray="3 2"/>
-            <circle cx="36" cy="12" r="4" fill="#7F77DD"/>
-            <circle cx="10" cy="54" r="2.5" fill="rgba(127,119,221,0.4)"/>
-            <circle cx="62" cy="54" r="2.5" fill="rgba(127,119,221,0.4)"/>
-          </svg>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.jpg" alt="ArcLab" style={{ height: "64px", width: "auto" }} />
         </div>
 
         <div style={{
           display: "inline-flex", alignItems: "center", gap: "6px",
-          background: "rgba(127,119,221,0.1)", border: "1px solid rgba(127,119,221,0.2)",
+          background: GLIGHT, border: `1px solid ${GBORDER}`,
           borderRadius: "20px", padding: "4px 14px", marginBottom: "20px",
         }}>
-          <span style={{ fontSize: "12px", color: "#AFA9EC", letterSpacing: "0.05em" }}>Team ParallaX · NUS Orbital 2026 · Apollo</span>
+          <span style={{ fontSize: "12px", color: G, letterSpacing: "0.05em", fontWeight: 500 }}>
+            Team ParallaX · NUS Orbital 2026 · Apollo
+          </span>
         </div>
 
-        <h1 style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "16px" }}>ArcLab</h1>
-        <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.5)", lineHeight: 1.75, maxWidth: "520px", margin: "0 auto" }}>
+        <h1 style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "16px", color: "#111827" }}>
+          ArcLab
+        </h1>
+        <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.75, maxWidth: "520px", margin: "0 auto" }}>
           Built by team ParallaX for NUS Orbital 2026, ArcLab is a web-based physics analysis platform
           that uses computer vision to extract real physical parameters from any projectile video —
           gravity, velocity, launch angle, full trajectory. No carbon paper. No manual frame clicking.
@@ -93,14 +96,14 @@ export default function InfoPage() {
       </section>
 
       {/* Problem vs Solution */}
-      <section style={{ borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <section style={{ borderTop: "1px solid #e5e7eb", borderBottom: "1px solid #e5e7eb", background: "#f8f9fa" }}>
         <div style={{ maxWidth: "820px", margin: "0 auto", padding: "56px 2rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
           <div>
-            <div style={{ fontSize: "11px", color: "#FF8080", letterSpacing: "0.1em", marginBottom: "10px" }}>THE PROBLEM</div>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35 }}>
+            <div style={{ fontSize: "11px", color: "#dc2626", letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>THE PROBLEM</div>
+            <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35, color: "#111827" }}>
               Physics experiments are tedious and error-prone
             </h2>
-            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.45)", lineHeight: 1.75 }}>
+            <p style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.75 }}>
               Rolling a steel ball off a ramp requires precise alignment and accumulates errors at every step.
               Existing tools like Tracker still demand manual frame-by-frame clicking — in a 40-minute lesson,
               5 minutes can be lost just selecting frames. Students lack a simple link between what they learn
@@ -108,11 +111,11 @@ export default function InfoPage() {
             </p>
           </div>
           <div>
-            <div style={{ fontSize: "11px", color: "#5DCAA5", letterSpacing: "0.1em", marginBottom: "10px" }}>OUR SOLUTION</div>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35 }}>
+            <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>OUR SOLUTION</div>
+            <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35, color: "#111827" }}>
               ArcLab automates the entire analysis pipeline
             </h2>
-            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.45)", lineHeight: 1.75 }}>
+            <p style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.75 }}>
               Upload any video of a projectile — a basketball throw, a water jet, a coin toss. Click the ball once.
               Draw two calibration points. In under a minute you get gravity, initial velocity, launch angle,
               and a full trajectory chart — ready to export as a PDF lab report or CSV for further analysis.
@@ -123,82 +126,72 @@ export default function InfoPage() {
 
       {/* Team */}
       <section style={{ maxWidth: "820px", margin: "0 auto", padding: "64px 2rem" }}>
-        <div style={{ fontSize: "11px", color: "#7F77DD", letterSpacing: "0.1em", marginBottom: "10px" }}>THE TEAM</div>
-        <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "8px" }}>Team ParallaX</h2>
-        <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.45)", marginBottom: "28px", lineHeight: 1.7 }}>
+        <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>THE TEAM</div>
+        <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "8px", color: "#111827" }}>Team ParallaX</h2>
+        <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "28px", lineHeight: 1.7 }}>
           ParallaX is a two-person NUS team combining software engineering and physics expertise to build ArcLab.
           We believe physics education should be hands-on, visual, and accessible to anyone with a phone and a ball.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          {MEMBERS.map(({ name, nickname, photo, github, linkedin, role, colour, bg, skills, note }) => (
+          {MEMBERS.map(({ name, nickname, photo, github, linkedin, role, colour, bg, border, skills, note }) => (
             <div key={name} style={{
-              background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)",
+              background: "#fff", border: "1px solid #e5e7eb",
               borderRadius: "14px", padding: "24px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             }}>
-              {/* Photo + name row */}
               <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
                 {photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photo}
-                    alt={name}
-                    style={{
-                      width: "60px", height: "60px", borderRadius: "50%",
-                      objectFit: "cover", border: `2px solid ${colour}50`, flexShrink: 0,
-                    }}
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.style.display = "none";
-                      const next = target.nextSibling as HTMLElement;
-                      if (next) next.style.display = "flex";
-                    }}
-                  />
+                  <img src={photo} alt={name} style={{
+                    width: "60px", height: "60px", borderRadius: "50%",
+                    objectFit: "cover", border: `2px solid ${border}`, flexShrink: 0,
+                  }}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.style.display = "none";
+                    const next = target.nextSibling as HTMLElement;
+                    if (next) next.style.display = "flex";
+                  }} />
                 ) : null}
-                {/* Initials fallback */}
                 <div style={{
                   width: "60px", height: "60px", borderRadius: "50%", background: bg,
-                  border: `2px solid ${colour}50`, alignItems: "center", justifyContent: "center",
+                  border: `2px solid ${border}`, alignItems: "center", justifyContent: "center",
                   fontSize: "16px", fontWeight: 700, color: colour, flexShrink: 0,
                   display: photo ? "none" : "flex",
                 }}>
                   {nickname.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: "15px", fontWeight: 600 }}>{name}</div>
-                  <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)", marginTop: "1px" }}>{nickname}</div>
-                  <div style={{ fontSize: "12px", color: colour, marginTop: "3px" }}>{role}</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#14154c" }}>{name}</div>
+                  <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "1px" }}>{nickname}</div>
+                  <div style={{ fontSize: "12px", color: colour, marginTop: "3px", fontWeight: 500 }}>{role}</div>
                 </div>
               </div>
 
-              {/* Note */}
-              <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", lineHeight: 1.65, marginBottom: "14px" }}>
-                {note}
-              </p>
+              <p style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.65, marginBottom: "14px" }}>{note}</p>
 
-              {/* Skills */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
                 {skills.map(s => (
                   <span key={s} style={{
                     fontSize: "11px", padding: "3px 8px", borderRadius: "6px",
-                    background: bg, color: colour, border: `1px solid ${colour}30`,
+                    background: bg, color: colour, border: `1px solid ${border}`, fontWeight: 500,
                   }}>{s}</span>
                 ))}
               </div>
 
-              {/* Links */}
-              <div style={{ display: "flex", gap: "8px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", gap: "8px", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
                 <a href={github} target="_blank" rel="noopener noreferrer" style={{
                   display: "flex", alignItems: "center", gap: "6px",
-                  fontSize: "12px", color: "rgba(255,255,255,0.5)",
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                  fontSize: "12px", color: "#041404", fontWeight: 500,
+                  background: "#f9fafb", border: "1px solid #e5e7eb",
                   borderRadius: "8px", padding: "6px 12px", textDecoration: "none",
                 }}>
                   <GithubIcon /> GitHub
                 </a>
                 <a href={linkedin} target="_blank" rel="noopener noreferrer" style={{
                   display: "flex", alignItems: "center", gap: "6px",
-                  fontSize: "12px", color: "rgba(255,255,255,0.5)",
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                  fontSize: "12px", color: "#1f54a9", fontWeight: 500,
+                  background: "#f9fafb", border: "1px solid #e5e7eb",
                   borderRadius: "8px", padding: "6px 12px", textDecoration: "none",
                 }}>
                   <LinkedInIcon /> LinkedIn
@@ -210,18 +203,18 @@ export default function InfoPage() {
       </section>
 
       {/* Features */}
-      <section style={{ background: "rgba(127,119,221,0.03)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+      <section style={{ background: "#f8f9fa", borderTop: "1px solid #e5e7eb" }}>
         <div style={{ maxWidth: "820px", margin: "0 auto", padding: "64px 2rem" }}>
-          <div style={{ fontSize: "11px", color: "#7F77DD", letterSpacing: "0.1em", marginBottom: "10px" }}>FEATURES</div>
-          <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px" }}>What ArcLab does</h2>
+          <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>FEATURES</div>
+          <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px", color: "#111827" }}>What ArcLab does</h2>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
             {FEATURES.map(({ label, desc }) => (
               <div key={label} style={{
-                background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)",
+                background: "#f9fafb", border: "1px solid #e5e7eb",
                 borderRadius: "12px", padding: "20px",
               }}>
-                <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "8px", color: "#fff" }}>{label}</div>
-                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>{desc}</div>
+                <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "8px", color: "#111827" }}>{label}</div>
+                <div style={{ fontSize: "12px", color: "#6b7280", lineHeight: 1.65 }}>{desc}</div>
               </div>
             ))}
           </div>
@@ -230,20 +223,20 @@ export default function InfoPage() {
 
       {/* SWE practices */}
       <section style={{ maxWidth: "820px", margin: "0 auto", padding: "64px 2rem" }}>
-        <div style={{ fontSize: "11px", color: "#7F77DD", letterSpacing: "0.1em", marginBottom: "10px" }}>HOW WE BUILD</div>
-        <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px" }}>Software engineering practices</h2>
+        <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>HOW WE BUILD</div>
+        <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px", color: "#111827" }}>Software engineering practices</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {SWE_PRACTICES.map(({ label, desc }) => (
-            <div key={label} style={{ borderLeft: "2px solid rgba(127,119,221,0.4)", paddingLeft: "16px" }}>
-              <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>{label}</div>
-              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>{desc}</div>
+            <div key={label} style={{ borderLeft: `3px solid ${G}`, paddingLeft: "16px" }}>
+              <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "#111827" }}>{label}</div>
+              <div style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.65 }}>{desc}</div>
             </div>
           ))}
         </div>
       </section>
 
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "24px 2rem", textAlign: "center" }}>
-        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>ArcLab · Team ParallaX · NUS Orbital 2026</span>
+      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "24px 2rem", textAlign: "center", background: "#fff" }}>
+        <span style={{ fontSize: "12px", color: "#9ca3af" }}>ArcLab · Team ParallaX · NUS Orbital 2026</span>
       </footer>
     </div>
   );
