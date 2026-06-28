@@ -25,6 +25,10 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
 
   const [showGhost, setShowGhost] = useState(true);
   const [showStrobe, setShowStrobe] = useState(false);
+  const [strobeInterval, setStrobeInterval] = useState(0.1);
+  const [strobeIntervalInput, setStrobeIntervalInput] = useState("0.1");
+  const [showStrobeTimestamps, setShowStrobeTimestamps] = useState(true);
+  
   const [exportingPdf, setExportingPdf] = useState(false);
   const [videoTab, setVideoTab] = useState<"original" | "overlay">("original");
   const [currentFrameIdx, setCurrentFrameIdx] = useState(0);
@@ -196,11 +200,70 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     ctx.stroke();
 
     // Strobe dots
-    if (showStrobe) {
-      xs.forEach((x, i) => {
-        const [cx, cy] = toCanvas(x, ys[i], bounds);
-        ctx.fillStyle = "rgba(22,163,74,0.4)";
-        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+    if (showStrobe && strobeInterval > 0) {
+      const ts = result.timestamps;
+      const minT = ts[0];
+      const maxT = ts[ts.length - 1];
+      const strobeIndices: number[] = [];
+
+      // Find the closest frames for each multiple of strobeInterval
+      let k = Math.ceil(minT / strobeInterval);
+      while (true) {
+        const targetT = k * strobeInterval;
+        if (targetT > maxT) break;
+
+        let closestIdx = 0;
+        let minDiff = Infinity;
+        for (let idx = 0; idx < ts.length; idx++) {
+          const diff = Math.abs(ts[idx] - targetT);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestIdx = idx;
+          }
+        }
+
+        if (!strobeIndices.includes(closestIdx)) {
+          strobeIndices.push(closestIdx);
+        }
+        k++;
+      }
+
+      strobeIndices.forEach((i) => {
+        const [cx, cy] = toCanvas(xs[i], ys[i], bounds);
+
+        // Draw 3D-like ghost ball with radial gradient
+        const r = 8;
+        const grad = ctx.createRadialGradient(cx - 2, cy - 2, 1, cx, cy, r);
+        grad.addColorStop(0, "#ffffff");
+        grad.addColorStop(0.3, "#93c5fd"); // light blue
+        grad.addColorStop(1, "#2563a8");   // primary brand blue
+        
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // White border
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Subtle arc shadow on the bottom-right edge of the ball
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0.25 * Math.PI, 0.75 * Math.PI);
+        ctx.stroke();
+
+        // Small timestamp label next to each dot
+        if (showStrobeTimestamps) {
+          ctx.fillStyle = "#374151";
+          ctx.font = "10px monospace";
+          ctx.textAlign = "left";
+          ctx.fillText(`${ts[i].toFixed(2)}s`, cx + 12, cy + 3);
+        }
       });
     }
 
@@ -282,7 +345,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         ctx.fillText(ln, tx + 8, ty + 13 + i * 16);
       });
     }
-  }, [xs, ys, showGhost, showStrobe, result, currentFrameIdx, frameStart, hoverPoint, zoom, getBounds, toCanvas, netVelocities, vxArr, vyArr, n]);
+  }, [xs, ys, showGhost, showStrobe, strobeInterval, showStrobeTimestamps, result, currentFrameIdx, frameStart, hoverPoint, zoom, getBounds, toCanvas, netVelocities, vxArr, vyArr, n]);
 
   useEffect(() => { drawTrajectory(); }, [drawTrajectory]);
 
@@ -574,9 +637,40 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
           onMouseUp={handleMouseUp}
           onMouseLeave={() => { setHoverPoint(null); isPanning.current=false; setPanning(false); }}
         />
-        <div style={{ display:"flex", gap:"8px", marginTop:"10px" }}>
+        <div style={{ display:"flex", gap:"8px", marginTop:"10px", flexWrap:"wrap", alignItems:"center" }}>
           <Toggle label="Ghost trajectory" value={showGhost} onChange={setShowGhost} disabled={!result.predicted_trajectory} />
           <Toggle label="Strobe view" value={showStrobe} onChange={setShowStrobe} />
+          {showStrobe && (
+            <div style={{ display:"flex", gap:"12px", alignItems:"center", marginLeft:"8px" }}>
+              <label style={{ fontSize:"12px", color:"#374151", display:"flex", alignItems:"center", gap:"6px" }}>
+                every
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={strobeIntervalInput}
+                  onChange={e => {
+                    setStrobeIntervalInput(e.target.value);
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val) && val > 0) {
+                      setStrobeInterval(val);
+                    }
+                  }}
+                  style={{ width:"56px", background:"#fff", border:"1px solid #d1d5db", borderRadius:"6px", padding:"4px 6px", color:"#111827", fontSize:"12px", textAlign:"center" }}
+                />
+                s
+              </label>
+              <label style={{ fontSize:"12px", color:"#374151", display:"flex", alignItems:"center", gap:"6px", cursor:"pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={showStrobeTimestamps}
+                  onChange={e => setShowStrobeTimestamps(e.target.checked)}
+                  style={{ cursor:"pointer" }}
+                />
+                Show timestamps
+              </label>
+            </div>
+          )}
         </div>
       </div>
 
