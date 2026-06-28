@@ -41,7 +41,7 @@ export default function Home() {
   const [analysing, setAnalysing]     = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [useAirResistance, setUseAirResistance] = useState(false);
-  const [method, setMethod]           = useState<"hsv" | "yolo">("hsv");
+  const [method, setMethod]           = useState<"hsv" | "yolo">("yolo");
   const [analysis, setAnalysis]       = useState<AnalysisResponse | null>(null);
 
   function loadMockResults() {
@@ -156,6 +156,7 @@ export default function Home() {
                 endFrame={endFrame}
                 onStartChange={setStartFrame}
                 onEndChange={setEndFrame}
+                videoId={uploadData.video_id}
               />
 
               {/* Tracking method */}
