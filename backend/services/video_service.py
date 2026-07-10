@@ -1,4 +1,5 @@
 import os
+import statistics
 import cv2
 import uuid
 from pathlib import Path
@@ -14,6 +15,43 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
+def _measure_fps(video_path: Path) -> tuple[float, int]:
+    """
+    Measure true fps/frame count from decoded frame timestamps rather than
+    trusting CAP_PROP_FPS/CAP_PROP_FRAME_COUNT. On iPhone .mov files that
+    were trimmed/re-exported, those container-metadata fields can reflect a
+    stale pre-trim duration while the actual frame timing is untouched and
+    correct — so we measure it directly from CAP_PROP_POS_MSEC deltas.
+    """
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise ValueError(f"Could not open video: {video_path}")
+
+    reported_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+
+    timestamps = []
+    while True:
+        ret, _ = cap.read()
+        if not ret:
+            break
+        timestamps.append(cap.get(cv2.CAP_PROP_POS_MSEC))
+    cap.release()
+
+    frame_count = len(timestamps)
+    if frame_count < 2:
+        return reported_fps, frame_count
+
+    deltas = [b - a for a, b in zip(timestamps, timestamps[1:]) if b > a]
+    if not deltas:
+        return reported_fps, frame_count
+
+    median_delta_ms = statistics.median(deltas)
+    if median_delta_ms <= 0:
+        return reported_fps, frame_count
+
+    return 1000.0 / median_delta_ms, frame_count
+
+
 def save_video(file_bytes: bytes, filename: str) -> dict:
     video_id = str(uuid.uuid4())
     ext = Path(filename).suffix or ".mp4"
@@ -25,11 +63,11 @@ def save_video(file_bytes: bytes, filename: str) -> dict:
         dest.unlink(missing_ok=True)
         raise ValueError("Could not open video — unsupported format?")
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     cap.release()
+
+    fps, total_frames = _measure_fps(dest)
 
     return {
         "video_id": video_id,
@@ -51,9 +89,7 @@ def get_video_path(video_id: str) -> Path:
 
 
 def get_video_fps(video_path: Path) -> float:
-    cap = cv2.VideoCapture(str(video_path))
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    cap.release()
+    fps, _ = _measure_fps(video_path)
     return fps
 
 
