@@ -1,10 +1,11 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
+import { API_ROOT } from "../lib/api";
 
 const G = "#2563a8";
 const GLIGHT = "#eff6ff";
 const GBORDER = "#bfdbfe";
-const BASE = "http://localhost:8000/api/v1/video";
+const BASE = `${API_ROOT}/api/v1/video`;
 
 interface Props {
   totalFrames: number;

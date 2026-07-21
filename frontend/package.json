@@ -12,6 +12,7 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "axios": "^1.16.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.21.0",

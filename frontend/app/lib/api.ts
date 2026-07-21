@@ -9,14 +9,21 @@ import {
 import { MOCK_UPLOAD, MOCK_SAMPLE_COLOUR, MOCK_ANALYSIS } from "./mockData";
 
 const USE_MOCK = false; // Set to true to use mock data instead of making API calls
-const BASE = "http://localhost:8000/api/v1/video";
+export const API_ROOT = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = `${API_ROOT}/api/v1/video`;
 
 export async function uploadVideo(file: File): Promise<UploadResponse> {
   if (USE_MOCK) return MOCK_UPLOAD;
   const form = new FormData();
   form.append("file", file);
-  const res = await axios.post<UploadResponse>(`${BASE}/upload`, form);
-  return res.data;
+  const res = await fetch(`${BASE}/upload`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
 }
 
 export async function sampleColour(

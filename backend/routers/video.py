@@ -1,11 +1,6 @@
-import sys
-from pathlib import Path
-
 import cv2
 from fastapi import APIRouter, UploadFile, File, HTTPException, Response
 from fastapi.responses import FileResponse
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from models.schemas import (
     UploadResponse,
