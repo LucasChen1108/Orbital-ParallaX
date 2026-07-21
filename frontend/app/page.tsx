@@ -165,7 +165,6 @@ export default function Home() {
                   Tracking method
                 </div>
                 {[
-                  { val: "hsv", label: "Colour (HSV)", desc: "You click the ball to sample its colour" },
                   { val: "yolo", label: "YOLOv8", desc: "Automatic detection, no clicking required" },
                 ].map(opt => (
                   <label key={opt.val} style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", cursor: "pointer" }}>
