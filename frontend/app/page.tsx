@@ -312,16 +312,18 @@ export default function Home() {
           </button>
         )}
 
-        {/* Dev mock button */}
-        <div style={{ marginTop: "40px", paddingTop: "24px", borderTop: "1px solid #e5e7eb" }}>
-          <button onClick={loadMockResults} style={{
-            background: "transparent", border: `1px dashed ${GBORDER}`,
-            color: "#15803d", padding: "8px 16px",
-            borderRadius: "8px", fontSize: "12px", cursor: "pointer",
-          }}>
-            ⚡ Skip to mock results (dev only)
-          </button>
-        </div>
+        {/* Dev mock button — only visible in local development */}
+        {process.env.NODE_ENV === "development" && (
+          <div style={{ marginTop: "40px", paddingTop: "24px", borderTop: "1px solid #e5e7eb" }}>
+            <button onClick={loadMockResults} style={{
+              background: "transparent", border: `1px dashed ${GBORDER}`,
+              color: "#15803d", padding: "8px 16px",
+              borderRadius: "8px", fontSize: "12px", cursor: "pointer",
+            }}>
+              ⚡ Skip to mock results (dev only)
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );
