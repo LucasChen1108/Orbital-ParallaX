@@ -2,6 +2,7 @@
 import { useRef, useEffect, useState } from "react";
 import { sampleColour } from "../lib/api";
 import { SampleColourResponse } from "../types/analysis";
+import { API_ROOT } from "../lib/api";
 
 const USE_MOCK = false;
 const G = "#2563a8";
@@ -62,7 +63,7 @@ export default function BallPicker({ videoId, frameIndex, videoWidth, videoHeigh
 
   const frameUrl = USE_MOCK
     ? null
-    : `http://localhost:8000/api/v1/video/frame/${videoId}/${frameIndex}`;
+    : `${API_ROOT}/api/v1/video/frame/${videoId}/${frameIndex}`;
 
   return (
     <div>

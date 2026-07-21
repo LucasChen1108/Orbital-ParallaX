@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import { CalibrationPoints } from "../types/analysis";
+import { API_ROOT } from "../lib/api";
 
 const G = "#2563a8";
 
@@ -111,7 +112,7 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`http://localhost:8000/api/v1/video/frame/${videoId}/${frameIndex}`}
+          src={`${API_ROOT}/api/v1/video/frame/${videoId}/${frameIndex}`}
           alt="calibration frame"
           style={{ display: "block", width: "100%" }}
         />

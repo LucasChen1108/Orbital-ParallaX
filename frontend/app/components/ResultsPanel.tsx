@@ -1,9 +1,10 @@
 "use client";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { PhysicsResult, AnalysisResponse, UploadResponse, CalibrationPoints, FrameRange } from "../types/analysis";
+import { API_ROOT } from "../lib/api";
 
 const APP_VERSION = "2.0.0-M2";
-const BASE = "http://localhost:8000/api/v1/video";
+const BASE = `${API_ROOT}/api/v1/video`;
 const G = "#2563a8";
 const GLIGHT = "#eff6ff";
 const GBORDER = "#bfdbfe";
