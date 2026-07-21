@@ -75,6 +75,12 @@ export default function Home() {
     else setStep(s => s - 1);
   }
 
+  function resetFlow() {
+    setStep(1); setResult(null); setUploadData(null);
+    setColourData(null); setCalibration(null);
+    setAnalysis(null); setMethod("yolo");
+  }
+
   async function handleAnalyse() {
     if (!uploadData || !calibration) return;
     if (method === "hsv" && !colourData) return;
@@ -105,7 +111,7 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8f9fa", color: "#111827", fontFamily: "system-ui, sans-serif" }}>
-      <Navbar currentStep={step} />
+      <Navbar currentStep={step} onLogoClick={resetFlow} />
 
       <main style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 2rem" }}>
 
@@ -297,11 +303,7 @@ export default function Home() {
         {/* New analysis */}
         {step === 6 && (
           <button
-            onClick={() => {
-              setStep(1); setResult(null); setUploadData(null);
-              setColourData(null); setCalibration(null);
-              setAnalysis(null); setMethod("hsv");
-            }}
+            onClick={resetFlow}
             style={{
               background: "#fff", border: "1px solid #e5e7eb",
               color: "#6b7280", fontSize: "13px", cursor: "pointer",

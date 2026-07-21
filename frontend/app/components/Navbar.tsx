@@ -6,9 +6,10 @@ const STEPS = ["Upload", "Interval", "Ball", "Calibrate", "Analyse", "Results"];
 
 interface NavbarProps {
   currentStep?: number;
+  onLogoClick?: () => void;
 }
 
-export default function Navbar({ currentStep }: NavbarProps) {
+export default function Navbar({ currentStep, onLogoClick }: NavbarProps) {
   const pathname = usePathname();
   const onAnalysePage = pathname === "/analyse" || pathname === "/";
 
@@ -22,7 +23,7 @@ export default function Navbar({ currentStep }: NavbarProps) {
       boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
     }}>
       {/* Logo */}
-      <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+      <Link href="/" onClick={onLogoClick} style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.jpg" alt="ArcLab" style={{ height: "36px", width: "auto" }} />
       </Link>
