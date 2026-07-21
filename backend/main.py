@@ -1,15 +1,7 @@
-import sys
 import os
-from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
-
-pythonpath = os.getenv("PYTHONPATH")
-if pythonpath:
-    sys.path.insert(0, pythonpath)
-else:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
