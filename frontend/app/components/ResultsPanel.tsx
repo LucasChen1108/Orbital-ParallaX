@@ -86,6 +86,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       r2 = ssTot > 1e-12 ? Math.max(0, 1 - ssRes/ssTot) : 1;
     }
   }
+  const fitLabel = result.drag_coefficient != null ? "Drag Model" : "Parabolic";
 
   // Video sync
   useEffect(() => {
@@ -427,7 +428,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       `# Gravity: ${result.estimated_gravity_ms2.toFixed(4)} m/s²`,
       `# Initial velocity: ${result.initial_velocity_ms.toFixed(4)} m/s`,
       `# Launch angle: ${result.launch_angle_deg.toFixed(2)} °`,
-      `# Parabolic fit R²: ${r2.toFixed(4)}`,
+      `# ${fitLabel} fit R²: ${r2.toFixed(4)}`,
       ``, headers.join(","), ...rows,
     ].join("\n");
     const blob = new Blob([lines], { type: "text/csv" });
@@ -474,7 +475,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       [["Video File",uploadData?.filename??"—"],["Resolution",`${uploadData?.width??"?"}×${uploadData?.height??"?"} @ ${uploadData?.fps??"?"}fps`],["Analysed Frames",`${frameStart} – ${frameEnd}`],["Tracking Mode",result.tracker_mode==="yolo"?"YOLOv8":"HSV Colour"],["Air Resistance",useAirResistance?"Yes":"No"],["Calibration (px/m)",result.px_per_metre.toFixed(2)],...(calibration?[["Cal Pt 1",`(${calibration.x1.toFixed(1)}, ${calibration.y1.toFixed(1)})`],["Cal Pt 2",`(${calibration.x2.toFixed(1)}, ${calibration.y2.toFixed(1)})`],["Cal Distance",`${calibration.real_world_distance_m} m`]]:[]),["App Version",APP_VERSION],["Export Timestamp",new Date().toISOString()]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
       y += 4;
       sectionTitle("3. Quality Metrics");
-      [["Detection Rate",`${analysis?.detection_rate?.toFixed(1)??"?"}%`],["Detected Frames",`${analysis?.detected_frames??"?"} / ${analysis?.total_frames??"?"}`],["Points Used for Fit",String(n)],["Parabolic Fit R²",r2.toFixed(4)]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
+      [["Detection Rate",`${analysis?.detection_rate?.toFixed(1)??"?"}%`],["Detected Frames",`${analysis?.detected_frames??"?"} / ${analysis?.total_frames??"?"}`],["Points Used for Fit",String(n)],[`${fitLabel} Fit R²`,r2.toFixed(4)]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
       y += 4;
       sectionTitle("4. Trajectory Chart");
       const canvas = trajectoryCanvasRef.current;
@@ -541,7 +542,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       {analysis?.detection_rate != null && (
         <div style={{ display:"flex", gap:"10px", marginBottom:"16px", flexWrap:"wrap" }}>
           <QBadge good={analysis.detection_rate>=80} label={`Detection rate: ${analysis.detection_rate.toFixed(1)}% (${analysis.detected_frames}/${analysis.total_frames} frames)`} />
-          <QBadge good={r2>=0.98} label={`Parabolic fit R² = ${r2.toFixed(4)}`} />
+          <QBadge good={r2>=0.98} label={`${fitLabel} fit R² = ${r2.toFixed(4)}`} />
         </div>
       )}
 
