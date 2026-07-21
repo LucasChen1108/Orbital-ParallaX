@@ -19,7 +19,7 @@ jobs:
           pip install flake8
 
       - name: Run flake8
-        run: flake8 backend/ --max-line-length=120 --exclude=backend/venv
+        run: flake8 backend/ --max-line-length=120 --exclude=backend/venv,backend/physics_engine
 
   test:
     name: Test (pytest)
@@ -34,14 +34,12 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
 
-      - name: Install physics_engine dependencies
-        run: pip install -r physics_engine/requirements.txt
-
       - name: Run physics_engine tests
-        run: pytest physics_engine/tests/ -v
+        run: pytest backend/physics_engine/tests/ -v
 
       - name: Run backend tests
         run: |
           cd backend
           PYTHONPATH=$GITHUB_WORKSPACE pytest tests/ -v
-        continue-on-error: true  # remove this once you have backend tests
+        continue-on-error: true  # remove this once you have backend 
+        

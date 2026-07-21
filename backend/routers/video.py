@@ -1,6 +1,3 @@
-import sys
-from pathlib import Path
-
 import cv2
 from fastapi import APIRouter, UploadFile, File, HTTPException, Response
 from fastapi.responses import FileResponse
