@@ -16,8 +16,14 @@ export async function uploadVideo(file: File): Promise<UploadResponse> {
   if (USE_MOCK) return MOCK_UPLOAD;
   const form = new FormData();
   form.append("file", file);
-  const res = await axios.post<UploadResponse>(`${BASE}/upload`, form);
-  return res.data;
+  const res = await fetch(`${BASE}/upload`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
 }
 
 export async function sampleColour(
