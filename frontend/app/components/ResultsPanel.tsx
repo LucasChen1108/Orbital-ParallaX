@@ -22,6 +22,7 @@ interface HoverPoint { idx: number; cx: number; cy: number; }
 export default function ResultsPanel({ result, analysis, uploadData, calibration, frameRange, useAirResistance }: Props) {
   const trajectoryCanvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const overlayVideoRef = useRef<HTMLVideoElement>(null);
 
   const [showGhost, setShowGhost] = useState(true);
   const [showStrobe, setShowStrobe] = useState(false);
@@ -46,6 +47,9 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   const frameEnd   = frameRange?.end_frame   ?? (result.timestamps.length - 1);
   const totalAnalysedFrames = result.timestamps.length;
   const fps = uploadData?.fps ?? 30;
+
+  const originalVideoUrl = uploadData ? `${BASE}/video/${uploadData.video_id}` : "";   
+  const overlayVideoUrl  = analysis?.has_overlay ? `${BASE}/overlay/${analysis.video_id}` : "";  
 
   const xs    = result.x_positions_m;
   const ys    = result.y_positions_m;
@@ -89,22 +93,31 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   const fitLabel = result.drag_coefficient != null ? "Drag Model" : "Parabolic";
 
   // Video sync
+  // Video sync
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const activeVideo = videoTab === "original" ? videoRef.current : overlayVideoRef.current;
+    if (!activeVideo) return;
     const handleTimeUpdate = () => {
-      const idx = Math.round(video.currentTime * fps) - frameStart;
+      const idx = Math.round(activeVideo.currentTime * fps) - frameStart;
       setCurrentFrameIdx(Math.max(0, Math.min(totalAnalysedFrames - 1, idx)));
     };
-    video.addEventListener("timeupdate", handleTimeUpdate);
-    return () => video.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [fps, frameStart, totalAnalysedFrames]);
+    activeVideo.addEventListener("timeupdate", handleTimeUpdate);
+    return () => activeVideo.removeEventListener("timeupdate", handleTimeUpdate);
+  }, [fps, frameStart, totalAnalysedFrames, videoTab, originalVideoUrl, overlayVideoUrl]);
 
   const goToFrame = useCallback((newIdx: number) => {
     const clamped = Math.max(0, Math.min(totalAnalysedFrames - 1, newIdx));
     setCurrentFrameIdx(clamped);
-    if (videoRef.current) videoRef.current.currentTime = (frameStart + clamped) / fps;
+    const t = (frameStart + clamped) / fps;
+    if (videoRef.current) videoRef.current.currentTime = t;
+    if (overlayVideoRef.current) overlayVideoRef.current.currentTime = t;
   }, [totalAnalysedFrames, frameStart, fps]);
+
+  // Keep newly-shown video tab in sync with current frame      
+  useEffect(() => {                                            
+    const activeVideo = videoTab === "original" ? videoRef.current : overlayVideoRef.current;  
+    if (activeVideo) activeVideo.currentTime = (frameStart + currentFrameIdx) / fps;  
+  }, [videoTab]); 
 
   // Wheel zoom
   useEffect(() => {
@@ -402,9 +415,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   const detectionSet    = new Set((analysis?.detections ?? []).map(([f]) => f));
   const currentDetected = detectionSet.has(currentAbsFrame);
 
-  const originalVideoUrl = uploadData ? `${BASE}/video/${uploadData.video_id}` : "";
-  const overlayVideoUrl  = analysis?.has_overlay ? `${BASE}/overlay/${analysis.video_id}` : "";
-
   // CSV export
   function handleExportCSV() {
     const headers = ["frame_index","timestamp_s","x_px","y_px","x_m","y_m","velocity_x_ms","velocity_y_ms","net_velocity_ms","acceleration_x_ms2","acceleration_y_ms2","detection_status"];
@@ -566,8 +576,8 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
           )}
           {videoTab === "overlay" && (
             overlayVideoUrl
-              ? <video src={overlayVideoUrl} controls style={{ width:"100%", display:"block", maxHeight:"500px" }} />
-              : <div style={{ padding:"48px", textAlign:"center", color:"#9ca3af", fontSize:"13px", background:"#f9fafb" }}>No overlay available — re-run analysis to generate one</div>
+            ? <video ref={overlayVideoRef} src={overlayVideoUrl} controls style={{ width:"100%", display:"block", maxHeight:"500px" }} />
+            : <div style={{ padding:"48px", textAlign:"center", color:"#9ca3af", fontSize:"13px", background:"#f9fafb" }}>No overlay available — re-run analysis to generate one</div>
           )}
           {videoTab === "original" && (
             <div style={{ position:"absolute", top:"8px", right:"8px",
