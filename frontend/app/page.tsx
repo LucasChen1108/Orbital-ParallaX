@@ -43,6 +43,7 @@ export default function Home() {
   const [useAirResistance, setUseAirResistance] = useState(false);
   const [method, setMethod]           = useState<"hsv" | "yolo">("yolo");
   const [analysis, setAnalysis]       = useState<AnalysisResponse | null>(null);
+  const [copiedConfig, setCopiedConfig] = useState(false);
 
   function loadMockResults() {
     if (MOCK_ANALYSIS.result) {
@@ -79,6 +80,27 @@ export default function Home() {
     setStep(1); setResult(null); setUploadData(null);
     setColourData(null); setCalibration(null);
     setAnalysis(null); setMethod("yolo");
+  }
+
+  function copySampleConfig() {
+    if (!calibration) return;
+    const snippet = {
+      id: "REPLACE-ME",
+      name: "REPLACE ME",
+      description: "REPLACE ME",
+      filename: uploadData?.filename ?? "REPLACE-ME.mp4",
+      method,
+      frameRange: { start_frame: startFrame, end_frame: endFrame },
+      calibration: {
+        x1: calibration.x1, y1: calibration.y1,
+        x2: calibration.x2, y2: calibration.y2,
+        real_world_distance_m: calibration.real_world_distance_m,
+      },
+      useAirResistance,
+    };
+    navigator.clipboard.writeText(JSON.stringify(snippet, null, 2));
+    setCopiedConfig(true);
+    setTimeout(() => setCopiedConfig(false), 2000);
   }
 
   async function handleAnalyse() {
@@ -279,14 +301,26 @@ export default function Home() {
 
           {/* Step 6 */}
           {step === 6 && result && (
-            <ResultsPanel
-              result={result}
-              analysis={analysis}
-              uploadData={uploadData}
-              calibration={calibration}
-              frameRange={{ start_frame: startFrame, end_frame: endFrame }}
-              useAirResistance={useAirResistance}
-            />
+            <>
+              <ResultsPanel
+                result={result}
+                analysis={analysis}
+                uploadData={uploadData}
+                calibration={calibration}
+                frameRange={{ start_frame: startFrame, end_frame: endFrame }}
+                useAirResistance={useAirResistance}
+              />
+              {process.env.NODE_ENV === "development" && (
+                <div style={{ marginTop: "20px", padding: "16px", background: "#fffbeb", border: "1px dashed #fde68a", borderRadius: "10px" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#92400e", marginBottom: "8px" }}>
+                    Dev tool — copy config for Video Library manifest
+                  </div>
+                  <button onClick={copySampleConfig} style={{ fontSize: "12px", background: "#fff", border: "1px solid #fde68a", color: "#92400e", padding: "6px 14px", borderRadius: "8px", cursor: "pointer" }}>
+                    {copiedConfig ? "✓ Copied!" : "Copy config JSON"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

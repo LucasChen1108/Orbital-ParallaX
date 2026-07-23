@@ -201,8 +201,8 @@ def compute_physics_with_drag(
     x0_guess = [9.81, 0.025, vx0_guess, vy0_guess]
     bounds = [(5, 15), (0.01, 0.1), (None, None), (None, None)]
 
-    res = minimize(residuals, x0_guess, method="Nelder-Mead",
-               options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 5000})
+    res = minimize(residuals, x0_guess, method="Nelder-Mead", bounds=bounds,
+            options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 5000})
 
     g_fit, b_fit, vx0_fit, vy0_fit = res.x
 

@@ -56,7 +56,7 @@ class PredictedTrajectory(BaseModel):
 
 class SandboxRequest(BaseModel):
     v0: float = Field(..., ge=0, le=100, description="Initial speed, m/s")
-    angle_deg: float = Field(..., ge=-90, le=90)
+    angle_deg: float = Field(..., ge=-180, le=180)
     g: float = Field(..., gt=0, le=50)
     drag_coeff: float = Field(0.0, ge=0, le=1)
     x0: float = 0.0
