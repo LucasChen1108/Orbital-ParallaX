@@ -481,8 +481,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       doc.text(`v${APP_VERSION} · ${new Date().toLocaleString()}`, pageW-margin, 12, { align: "right" });
       y = 26;
       sectionTitle("1. Physics Summary");
-      [["Estimated Gravity",`${result.estimated_gravity_ms2.toFixed(4)} m/s²`],["Initial Velocity",`${result.initial_velocity_ms.toFixed(4)} m/s`],["Launch Angle",`${result.launch_angle_deg.toFixed(2)} °`],["Maximum Height",`${maxHeight.toFixed(3)} m`],["Horizontal Range",`${horizontalRange.toFixed(3)} m`],["Time of Flight",`${timeOfFlight.toFixed(3)} s`],["Peak Velocity",`${peakVelocity.toFixed(3)} m/s`],...(result.drag_coefficient != null ? [["Drag Coefficient",result.drag_coefficient.toFixed(4)]] : [])].forEach(([l,v],i) => tableRow(l,v,i%2===0));
-      y += 4;
+      [["Estimated Gravity",`${result.estimated_gravity_ms2.toFixed(4)} m/s²`],["Initial Velocity",`${result.initial_velocity_ms.toFixed(4)} m/s`],["Launch Angle",`${result.launch_angle_deg.toFixed(2)} °`],["Maximum Height",`${maxHeight.toFixed(3)} m`],["Horizontal Range",`${horizontalRange.toFixed(3)} m`],["Time of Flight",`${timeOfFlight.toFixed(3)} s`],["Peak Velocity",`${peakVelocity.toFixed(3)} m/s`]].forEach(([l,v],i) => tableRow(l,v,i%2===0));      y += 4;
       sectionTitle("2. Experimental Context");
       [["Video File",uploadData?.filename??"—"],["Resolution",`${uploadData?.width??"?"}×${uploadData?.height??"?"} @ ${uploadData?.fps??"?"}fps`],["Analysed Frames",`${frameStart} – ${frameEnd}`],["Tracking Mode",result.tracker_mode==="yolo"?"YOLOv8":"HSV Colour"],["Air Resistance",useAirResistance?"Yes":"No"],["Calibration (px/m)",result.px_per_metre.toFixed(2)],...(calibration?[["Cal Pt 1",`(${calibration.x1.toFixed(1)}, ${calibration.y1.toFixed(1)})`],["Cal Pt 2",`(${calibration.x2.toFixed(1)}, ${calibration.y2.toFixed(1)})`],["Cal Distance",`${calibration.real_world_distance_m} m`]]:[]),["App Version",APP_VERSION],["Export Timestamp",new Date().toISOString()]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
       y += 4;
@@ -530,7 +529,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     { label: "Initial velocity",  value: result.initial_velocity_ms.toFixed(2),  unit: "m/s",  good: true },
     { label: "Launch angle",      value: result.launch_angle_deg.toFixed(1),      unit: "°",    good: true },
     { label: "Frames analysed",   value: String(n),                               unit: "frames",good: true },
-    ...(result.drag_coefficient!=null?[{label:"Drag coefficient",value:result.drag_coefficient.toFixed(3),unit:"",good:true}]:[]),
   ];
   return (
     <div>
