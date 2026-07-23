@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -53,6 +53,19 @@ class PredictedTrajectory(BaseModel):
     x_positions_m: list[float]
     y_positions_m: list[float]
 
+class SandboxRequest(BaseModel):
+    v0: float = Field(..., ge=0, le=100, description="Initial speed, m/s")
+    angle_deg: float = Field(..., ge=-90, le=90)
+    g: float = Field(..., gt=0, le=50)
+    drag_coeff: float = Field(0.0, ge=0, le=1)
+    x0: float = 0.0
+    y0: float = 0.0
+
+
+class SandboxResponse(BaseModel):
+    timestamps: list[float]
+    x_positions_m: list[float]
+    y_positions_m: list[float]
 
 class PhysicsResult(BaseModel):
     timestamps: list[float]

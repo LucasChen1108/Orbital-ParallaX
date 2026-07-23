@@ -294,3 +294,55 @@ def predict_trajectory(
         xs.append(round(x, 4))
         ys.append(round(y, 4))
     return {"x_positions_m": xs, "y_positions_m": ys}
+
+# ── Sandbox Mode — freestanding trajectory simulation ────────────────────────
+
+def simulate_trajectory(
+    v0: float,
+    angle_deg: float,
+    g: float,
+    drag_coeff: float = 0.0,
+    x0: float = 0.0,
+    y0: float = 0.0,
+    dt: float = 0.01,
+    max_t: float = 10.0,
+) -> dict:
+    """
+    Simulates a full projectile flight from launch to landing, given only
+    launch conditions — unlike predict_trajectory(), which requires a
+    pre-built timestamps array to overlay onto an existing real trajectory.
+
+    Used by Sandbox Mode: user picks v0/angle/g/drag via sliders, this
+    figures out the flight on its own and returns it for plotting, either
+    standalone or alongside a real tracked trajectory.
+
+    Stops when the ball returns to y0 (landing) or max_t is reached
+    (safety cap for edge cases like g very close to 0).
+    """
+    angle_rad = math.radians(angle_deg)
+    vx = v0 * math.cos(angle_rad)
+    vy = v0 * math.sin(angle_rad)
+
+    x, y, t = x0, y0, 0.0
+    timestamps = [0.0]
+    xs = [round(x0, 4)]
+    ys = [round(y0, 4)]
+
+    while t < max_t:
+        speed = math.sqrt(vx * vx + vy * vy)
+        ax = -drag_coeff * speed * vx
+        ay = -g - drag_coeff * speed * vy
+        vx += ax * dt
+        vy += ay * dt
+        x  += vx * dt
+        y  += vy * dt
+        t  += dt
+
+        timestamps.append(round(t, 4))
+        xs.append(round(x, 4))
+        ys.append(round(y, 4))
+
+        if y < y0:
+            break
+
+    return {"timestamps": timestamps, "x_positions_m": xs, "y_positions_m": ys}

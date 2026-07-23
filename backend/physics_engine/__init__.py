@@ -8,7 +8,7 @@ Public API — import from here, not from submodules.
 """
 
 from .tracker          import sample_ball_colour, track_ball
-from .solver.calculator import compute_px_per_metre, compute_physics, compute_physics_with_drag
+from .solver.calculator import compute_px_per_metre, compute_physics, compute_physics_with_drag, simulate_trajectory
 
 __all__ = [
     "sample_ball_colour",
@@ -16,4 +16,5 @@ __all__ = [
     "compute_px_per_metre",
     "compute_physics",
     "compute_physics_with_drag",
+    "simulate_trajectory",
 ]

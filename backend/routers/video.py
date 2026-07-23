@@ -6,6 +6,7 @@ from models.schemas import (
     UploadResponse,
     SampleColourRequest, SampleColourResponse,
     AnalysisRequest, AnalysisResponse, PhysicsResult,
+    SandboxRequest, SandboxResponse
 )
 from services.video_service import (
     save_video, get_video_path, get_video_fps,
@@ -14,7 +15,7 @@ from services.video_service import (
 from physics_engine import (
     sample_ball_colour, track_ball,
     compute_px_per_metre, compute_physics,
-    compute_physics_with_drag,
+    compute_physics_with_drag, simulate_trajectory,
 )
 
 router = APIRouter()
@@ -136,6 +137,22 @@ def analyse_video(req: AnalysisRequest):
         has_overlay=has_overlay,
     )
 
+@router.post("/predict", response_model=SandboxResponse)
+def predict_sandbox_trajectory(req: SandboxRequest):
+    """
+    Sandbox Mode: given launch conditions, simulate a full trajectory.
+    No video_id required — pure physics, works standalone or anchored
+    to a real analysis (frontend passes x0/y0 to match a real trajectory).
+    """
+    data = simulate_trajectory(
+        v0=req.v0,
+        angle_deg=req.angle_deg,
+        g=req.g,
+        drag_coeff=req.drag_coeff,
+        x0=req.x0,
+        y0=req.y0,
+    )
+    return SandboxResponse(**data)
 
 @router.get("/frame/{video_id}/{frame_index}")
 def get_frame(video_id: str, frame_index: int):
