@@ -1,0 +1,12 @@
+[
+  {
+    "id": "basketball-throw",
+    "name": "Basketball free throw",
+    "description": "Indoor, good lighting — a clean example to start with.",
+    "filename": "Test1.mov",
+    "method": "yolo",
+    "frameRange": { "start_frame": 0, "end_frame": 60 },
+    "calibration": { "x1": 100, "y1": 400, "x2": 100, "y2": 200, "real_world_distance_m": 1.0 },
+    "useAirResistance": false
+  }
+]
