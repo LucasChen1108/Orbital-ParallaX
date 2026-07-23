@@ -2,6 +2,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { PhysicsResult, AnalysisResponse, UploadResponse, CalibrationPoints, FrameRange } from "../types/analysis";
 import { API_ROOT } from "../lib/api";
+import SandboxTrajectory from "./SandboxTrajectory";
 
 const APP_VERSION = "2.0.0-M2";
 const BASE = `${API_ROOT}/api/v1/video`;
@@ -684,6 +685,19 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
             </div>
           )}
         </div>
+      </div>
+      
+      {/* Sandbox Mode */}
+      <div style={{ background:"#fff", border:"1px solid #e5e7eb", borderRadius:"12px", padding:"16px", marginBottom:"16px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+        <SandboxTrajectory
+          realTrajectory={{ x_positions_m: xs, y_positions_m: ys }}
+          initialParams={{
+            v0: result.initial_velocity_ms,
+            angleDeg: result.launch_angle_deg,
+            g: result.estimated_gravity_ms2,
+            dragCoeff: result.drag_coefficient ?? 0,
+          }}
+        />
       </div>
 
       {/* Tracker badge */}

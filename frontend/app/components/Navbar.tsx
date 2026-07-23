@@ -59,6 +59,7 @@ export default function Navbar({ currentStep, onLogoClick }: NavbarProps) {
       {/* Nav links */}
       <div style={{ display: "flex", gap: "6px" }}>
         <NavLink href="/" label="Analyse" active={pathname === "/"} />
+        <NavLink href="/sandbox" label="Sandbox" active={pathname === "/sandbox"} />
         <NavLink href="/info" label="About" active={pathname === "/info"} />
       </div>
     </nav>
