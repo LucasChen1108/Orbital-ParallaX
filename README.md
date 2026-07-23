@@ -2,7 +2,7 @@
 
 A web application that uses computer vision to analyse projectile motion from uploaded videos. Upload a video, click the ball, set calibration points, and get real physics data.
 
-**Live app:** [your-vercel-url-here] · **API:** [your-railway-url-here]
+**Live app:** https://orbital-parallax-production.up.railway.app/health 
 
 ## Project Structure
 
