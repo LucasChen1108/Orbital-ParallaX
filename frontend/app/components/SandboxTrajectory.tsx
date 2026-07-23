@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { API_ROOT } from "../lib/api";
 
-const G = "#2563a8";        // tracked / real trajectory — solid blue
-const SANDBOX = "#7c3aed";  // sandbox / hypothetical trajectory — dashed purple
+const REAL_COLOR = "#2563a8";
+const SANDBOX_COLOR = "#7c3aed";
+const DEFAULT_SCALE = 14; // px per metre, abstract (non-overlay) mode
 
 interface RealTrajectory {
   x_positions_m: number[];
@@ -17,25 +18,49 @@ interface SandboxParams {
   dragCoeff: number;
 }
 
+interface OverlayProps {
+  frameUrl: string;
+  videoWidthPx: number;
+  videoHeightPx: number;
+  pxPerMetre: number;
+}
+
 interface Props {
   realTrajectory?: RealTrajectory | null;
   initialParams?: Partial<SandboxParams>;
+  overlay?: OverlayProps; // when set, renders on top of the real video frame
 }
 
 const DEFAULTS: SandboxParams = { v0: 15, angleDeg: 45, g: 9.81, dragCoeff: 0 };
 
-export default function SandboxTrajectory({ realTrajectory, initialParams }: Props) {
+export default function SandboxTrajectory({ realTrajectory, initialParams, overlay }: Props) {
   const [params, setParams] = useState<SandboxParams>({ ...DEFAULTS, ...initialParams });
-  const [predicted, setPredicted] = useState<{ x_positions_m: number[]; y_positions_m: number[] } | null>(null);
+  const [predicted, setPredicted] = useState<{ timestamps: number[]; x_positions_m: number[]; y_positions_m: number[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [baseScale, setBaseScale] = useState(DEFAULT_SCALE); // abstract mode — only ever shrinks
+  const [hover, setHover] = useState<{ xm: number; ym: number } | null>(null);
+  const [panning, setPanning] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgImgRef = useRef<HTMLImageElement | null>(null);
+  const isPanning = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const x0 = realTrajectory?.x_positions_m?.[0] ?? 0;
   const y0 = realTrajectory?.y_positions_m?.[0] ?? 0;
 
-  // Debounced fetch — waits 150ms after the user stops dragging before calling the backend
+  const W = 700;
+  const H = overlay ? Math.round(W * (overlay.videoHeightPx / overlay.videoWidthPx)) : 400;
+  const pad = overlay ? 0 : 48;
+
+  // Debounced fetch — 150ms after the user stops dragging a slider.
+  // Scale is recomputed and set right here, inside this same async callback,
+  // rather than in a separate effect reacting to `predicted` — avoids an
+  // extra cascading render pass.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -46,16 +71,24 @@ export default function SandboxTrajectory({ realTrajectory, initialParams }: Pro
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            v0: params.v0,
-            angle_deg: params.angleDeg,
-            g: params.g,
-            drag_coeff: params.dragCoeff,
-            x0, y0,
+            v0: params.v0, angle_deg: params.angleDeg, g: params.g,
+            drag_coeff: params.dragCoeff, x0, y0,
           }),
         });
         if (!res.ok) throw new Error(`Prediction failed (${res.status})`);
         const data = await res.json();
         setPredicted(data);
+
+        if (!overlay) {
+          const allX = [...(realTrajectory?.x_positions_m ?? []), ...data.x_positions_m];
+          const allY = [...(realTrajectory?.y_positions_m ?? []), ...data.y_positions_m];
+          const spanX = Math.max(...allX, x0) - Math.min(...allX, x0) || 1;
+          const spanY = Math.max(...allY, y0) - Math.min(...allY, y0) || 1;
+          const availW = W - pad * 2 - 20;
+          const availH = H - pad * 2 - 20;
+          const requiredScale = Math.min(availW / spanX, availH / spanY);
+          if (requiredScale > 0) setBaseScale(s => Math.min(s, requiredScale));
+        }
       } catch {
         setError("Could not reach backend for prediction.");
       } finally {
@@ -63,93 +96,189 @@ export default function SandboxTrajectory({ realTrajectory, initialParams }: Pro
       }
     }, 150);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params, x0, y0]);
 
-  const W = 700, H = 380, pad = 48;
+  const worldToCanvas = useCallback((xm: number, ym: number): [number, number] => {
+    if (overlay) {
+      // Video-pixel space: px_x = x_m * pxPerMetre, px_y = -y_m * pxPerMetre
+      // (matches backend calculator.py's inverse convention exactly)
+      const scaleFactor = W / overlay.videoWidthPx;
+      const pxX = xm * overlay.pxPerMetre * scaleFactor;
+      const pxY = -ym * overlay.pxPerMetre * scaleFactor;
+      return [(pxX - W / 2) * zoom + W / 2 + pan.x, (pxY - H / 2) * zoom + H / 2 + pan.y];
+    }
+    // Abstract mode: launch point is FIXED at a stable pixel anchor.
+    // Everything else is drawn relative to that anchor — it never moves.
+    const originPx = pad + 10;
+    const originPy = H - pad - 10;
+    const px = originPx + (xm - x0) * baseScale;
+    const py = originPy - (ym - y0) * baseScale;
+    return [(px - W / 2) * zoom + W / 2 + pan.x, (py - H / 2) * zoom + H / 2 + pan.y];
+  }, [overlay, zoom, pan, baseScale, x0, y0, H, pad]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, W, H);
+    const context: CanvasRenderingContext2D = ctx; // non-null alias, safe inside nested closures below
+    context.clearRect(0, 0, W, H);
 
-    const allX = [...(realTrajectory?.x_positions_m ?? []), ...(predicted?.x_positions_m ?? []), x0];
-    const allY = [...(realTrajectory?.y_positions_m ?? []), ...(predicted?.y_positions_m ?? []), y0, 0];
-    if (allX.length === 0) return;
-
-    const minX = Math.min(...allX), maxX = Math.max(...allX);
-    const minY = Math.min(...allY), maxY = Math.max(...allY);
-
-    const toCanvas = (x: number, y: number): [number, number] => [
-      pad + ((x - minX) / (maxX - minX || 1)) * (W - pad * 2),
-      H - pad - ((y - minY) / (maxY - minY || 1)) * (H - pad * 2),
-    ];
-
-    ctx.strokeStyle = "#e5e7eb";
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-      const gy = pad + (i / 5) * (H - pad * 2);
-      ctx.beginPath(); ctx.moveTo(pad, gy); ctx.lineTo(W - pad, gy); ctx.stroke();
-    }
-    for (let i = 0; i <= 7; i++) {
-      const gx = pad + (i / 7) * (W - pad * 2);
-      ctx.beginPath(); ctx.moveTo(gx, pad); ctx.lineTo(gx, H - pad); ctx.stroke();
+    if (overlay && bgImgRef.current) {
+      context.drawImage(bgImgRef.current, 0, 0, W, H);
+    } else {
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, W, H);
     }
 
-    ctx.fillStyle = "#6b7280"; ctx.font = "11px system-ui"; ctx.textAlign = "center";
-    ctx.fillText("x (m)", W / 2, H - 8);
-    ctx.save(); ctx.translate(14, H / 2); ctx.rotate(-Math.PI / 2);
-    ctx.fillText("y (m)", 0, 0); ctx.restore();
+    if (!overlay) {
+      context.strokeStyle = "#e5e7eb"; context.lineWidth = 1;
+      for (let i = 0; i <= 6; i++) {
+        const gy = pad + (i / 6) * (H - pad * 2);
+        context.beginPath(); context.moveTo(pad, gy); context.lineTo(W - pad, gy); context.stroke();
+      }
+      for (let i = 0; i <= 8; i++) {
+        const gx = pad + (i / 8) * (W - pad * 2);
+        context.beginPath(); context.moveTo(gx, pad); context.lineTo(gx, H - pad); context.stroke();
+      }
+      context.fillStyle = "#6b7280"; context.font = "11px system-ui"; context.textAlign = "center";
+      context.fillText("x (m)", W / 2, H - 8);
+      context.save(); context.translate(14, H / 2); context.rotate(-Math.PI / 2);
+      context.fillText("y (m)", 0, 0); context.restore();
+    }
+
+    // Line with a white "halo" underneath for legibility on top of a video frame
+    function strokeLine(points: [number, number][], color: string, width: number, dashed: boolean) {
+      if (points.length === 0) return;
+      if (overlay) {
+        context.strokeStyle = "rgba(255,255,255,0.9)"; context.lineWidth = width + 3;
+        context.setLineDash(dashed ? [8, 5] : []);
+        context.beginPath();
+        points.forEach(([cx, cy], i) => (i === 0 ? context.moveTo(cx, cy) : context.lineTo(cx, cy)));
+        context.stroke();
+      }
+      context.strokeStyle = color; context.lineWidth = width; context.lineJoin = "round";
+      context.setLineDash(dashed ? [7, 5] : []);
+      context.beginPath();
+      points.forEach(([cx, cy], i) => (i === 0 ? context.moveTo(cx, cy) : context.lineTo(cx, cy)));
+      context.stroke();
+      context.setLineDash([]);
+    }
 
     if (realTrajectory && realTrajectory.x_positions_m.length > 0) {
-      ctx.strokeStyle = G; ctx.lineWidth = 3; ctx.lineJoin = "round";
-      ctx.beginPath();
-      realTrajectory.x_positions_m.forEach((x, i) => {
-        const [cx, cy] = toCanvas(x, realTrajectory.y_positions_m[i]);
-        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
-      });
-      ctx.stroke();
+      const pts = realTrajectory.x_positions_m.map((x, i) => worldToCanvas(x, realTrajectory.y_positions_m[i]));
+      strokeLine(pts, REAL_COLOR, overlay ? 3.5 : 3, false);
     }
 
     if (predicted && predicted.x_positions_m.length > 0) {
-      ctx.strokeStyle = SANDBOX; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]);
-      ctx.beginPath();
-      predicted.x_positions_m.forEach((x, i) => {
-        const [cx, cy] = toCanvas(x, predicted.y_positions_m[i]);
-        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
-      });
-      ctx.stroke();
-      ctx.setLineDash([]);
+      const pts = predicted.x_positions_m.map((x, i) => worldToCanvas(x, predicted.y_positions_m[i]));
+      strokeLine(pts, SANDBOX_COLOR, overlay ? 3 : 2.5, true);
     }
 
-    const [lx, ly] = toCanvas(x0, y0);
-    ctx.fillStyle = "#111827";
-    ctx.beginPath(); ctx.arc(lx, ly, 4, 0, Math.PI * 2); ctx.fill();
-  }, [realTrajectory, predicted, x0, y0]);
+    const [lx, ly] = worldToCanvas(x0, y0);
+    context.fillStyle = "#111827";
+    context.beginPath(); context.arc(lx, ly, overlay ? 5 : 4, 0, Math.PI * 2); context.fill();
+    context.strokeStyle = "#fff"; context.lineWidth = 1.5;
+    context.beginPath(); context.arc(lx, ly, overlay ? 5 : 4, 0, Math.PI * 2); context.stroke();
+
+    if (hover && !overlay) {
+      const [hx, hy] = worldToCanvas(hover.xm, hover.ym);
+      const label = `x=${hover.xm.toFixed(2)}m  y=${hover.ym.toFixed(2)}m`;
+      context.font = "11px monospace";
+      const tw = context.measureText(label).width + 16;
+      const tx = Math.min(hx + 10, W - tw - 4);
+      context.fillStyle = "#fff"; context.strokeStyle = "#d1d5db"; context.lineWidth = 1;
+      context.beginPath(); context.roundRect(tx, Math.max(4, hy - 24), tw, 20, 5); context.fill(); context.stroke();
+      context.fillStyle = "#111827"; context.textAlign = "left";
+      context.fillText(label, tx + 8, Math.max(18, hy - 10));
+    }
+  }, [overlay, realTrajectory, predicted, x0, y0, hover, worldToCanvas, H, pad]);
+
+  // Load background frame image (overlay mode only)
+  useEffect(() => {
+    if (!overlay) { bgImgRef.current = null; return; }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => { bgImgRef.current = img; draw(); };
+    img.src = overlay.frameUrl;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlay?.frameUrl]);
 
   useEffect(() => { draw(); }, [draw]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      setZoom(z => Math.max(0.5, Math.min(6, z * (e.deltaY > 0 ? 0.9 : 1.1))));
+    };
+    canvas.addEventListener("wheel", handler, { passive: false });
+    return () => canvas.removeEventListener("wheel", handler);
+  }, []);
+
+  function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
+    isPanning.current = true; setPanning(true);
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+  }
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (isPanning.current) {
+      const dx = e.clientX - lastMouse.current.x;
+      const dy = e.clientY - lastMouse.current.y;
+      setPan(p => ({ x: p.x + dx, y: p.y + dy }));
+      lastMouse.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    if (!overlay) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top) * (H / rect.height);
+      const originPx = pad + 10, originPy = H - pad - 10;
+      const ux = (mx - W / 2 - pan.x) / zoom + W / 2;
+      const uy = (my - H / 2 - pan.y) / zoom + H / 2;
+      setHover({ xm: x0 + (ux - originPx) / baseScale, ym: y0 - (uy - originPy) / baseScale });
+    }
+  }
+  function handleMouseUp() { isPanning.current = false; setPanning(false); }
+
+  function resetView() { setZoom(1); setPan({ x: 0, y: 0 }); setBaseScale(DEFAULT_SCALE); }
   function updateParam(key: keyof SandboxParams, value: number) {
     setParams(p => ({ ...p, [key]: value }));
   }
 
+  const metrics = useMemo(() => {
+    if (!predicted || predicted.x_positions_m.length === 0) return null;
+    const xs = predicted.x_positions_m, ys = predicted.y_positions_m;
+    return {
+      range: Math.max(...xs) - Math.min(...xs),
+      maxHeight: Math.max(...ys) - y0,
+      timeOfFlight: predicted.timestamps[predicted.timestamps.length - 1],
+    };
+  }, [predicted, y0]);
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
         <div style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>
           Sandbox Mode {loading && <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: 400 }}>· updating…</span>}
         </div>
-        <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <span style={{ fontSize: "10px", color: "#6b7280" }}>scroll to zoom · drag to pan{!overlay ? " · hover for coords" : ""}</span>
+          {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
+            <button onClick={resetView} style={{ fontSize: "11px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#15803d", borderRadius: "6px", padding: "3px 8px", cursor: "pointer" }}>
+              Reset view
+            </button>
+          )}
           {realTrajectory && (
             <span style={{ fontSize: "10px", color: "#6b7280", display: "flex", alignItems: "center", gap: "5px" }}>
-              <span style={{ width: "16px", height: "2px", background: G, display: "inline-block" }} /> tracked
+              <span style={{ width: "16px", height: "2px", background: REAL_COLOR, display: "inline-block" }} /> tracked
             </span>
           )}
           <span style={{ fontSize: "10px", color: "#6b7280", display: "flex", alignItems: "center", gap: "5px" }}>
-            <span style={{ width: "16px", height: "2px", borderTop: `2px dashed ${SANDBOX}`, display: "inline-block" }} /> sandbox
+            <span style={{ width: "16px", height: "2px", borderTop: `2px dashed ${SANDBOX_COLOR}`, display: "inline-block" }} /> sandbox
           </span>
         </div>
       </div>
@@ -157,10 +286,25 @@ export default function SandboxTrajectory({ realTrajectory, initialParams }: Pro
       <canvas
         ref={canvasRef}
         width={W} height={H}
-        style={{ width: "100%", borderRadius: "8px", border: "1px solid #f3f4f6" }}
+        style={{ width: "100%", borderRadius: "8px", border: "1px solid #f3f4f6", cursor: panning ? "grabbing" : "crosshair" }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => { isPanning.current = false; setPanning(false); setHover(null); }}
       />
 
       {error && <div style={{ marginTop: "8px", fontSize: "12px", color: "#dc2626" }}>{error}</div>}
+
+      {metrics && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginTop: "14px" }}>
+          {[["Range", `${metrics.range.toFixed(2)} m`], ["Max height", `${metrics.maxHeight.toFixed(2)} m`], ["Time of flight", `${metrics.timeOfFlight.toFixed(2)} s`]].map(([label, val]) => (
+            <div key={label} style={{ background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: "8px", padding: "8px 12px" }}>
+              <div style={{ fontSize: "10px", color: "#7c3aed", marginBottom: "2px" }}>{label}</div>
+              <div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "monospace", color: "#111827" }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "18px" }}>
         <SliderControl label="Initial velocity" unit=" m/s" value={params.v0} min={1} max={40} step={0.5} onChange={v => updateParam("v0", v)} />
@@ -179,14 +323,14 @@ function SliderControl({ label, unit, value, min, max, step, onChange }: {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#374151", marginBottom: "6px" }}>
         <span>{label}</span>
-        <span style={{ fontFamily: "monospace", color: "#2563a8", fontWeight: 600 }}>
+        <span style={{ fontFamily: "monospace", color: "#7c3aed", fontWeight: 600 }}>
           {value.toFixed(step < 1 ? 3 : 1)}{unit}
         </span>
       </div>
       <input
         type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(parseFloat(e.target.value))}
-        style={{ width: "100%", accentColor: "#2563a8" }}
+        style={{ width: "100%", accentColor: "#7c3aed" }}
       />
     </div>
   );
