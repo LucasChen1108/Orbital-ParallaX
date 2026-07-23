@@ -2,6 +2,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { PhysicsResult, AnalysisResponse, UploadResponse, CalibrationPoints, FrameRange } from "../types/analysis";
 import { API_ROOT } from "../lib/api";
+import SandboxTrajectory from "./SandboxTrajectory";
 
 const APP_VERSION = "2.0.0-M2";
 const BASE = `${API_ROOT}/api/v1/video`;
@@ -200,7 +201,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       ctx.beginPath();
       gx2.forEach((x, i) => {
         const [cx, cy] = toCanvas(x, gy2[i], bounds);
-        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+        if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
       });
       ctx.stroke(); ctx.setLineDash([]);
     }
@@ -210,7 +211,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     ctx.beginPath();
     xs.forEach((x, i) => {
       const [cx, cy] = toCanvas(x, ys[i], bounds);
-      i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
     });
     ctx.stroke();
 
@@ -684,6 +685,25 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
             </div>
           )}
         </div>
+      </div>
+      
+      {/* Sandbox Mode — overlaid on the real video frame */}
+      <div style={{ background:"#fff", border:"1px solid #e5e7eb", borderRadius:"12px", padding:"16px", marginBottom:"16px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+        <SandboxTrajectory
+          realTrajectory={{ x_positions_m: xs, y_positions_m: ys }}
+          initialParams={{
+            v0: result.initial_velocity_ms,
+            angleDeg: result.launch_angle_deg,
+            g: result.estimated_gravity_ms2,
+            dragCoeff: result.drag_coefficient ?? 0,
+          }}
+          overlay={uploadData ? {
+            frameUrl: `${BASE}/frame/${uploadData.video_id}/${analysis?.detections?.[0]?.[0] ?? frameStart}`,
+            videoWidthPx: uploadData.width,
+            videoHeightPx: uploadData.height,
+            pxPerMetre: result.px_per_metre,
+          } : undefined}
+        />
       </div>
 
       {/* Tracker badge */}
