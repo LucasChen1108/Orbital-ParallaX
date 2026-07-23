@@ -222,8 +222,10 @@ backend/uploads/
 # Video files — never commit uploads
 *.mp4
 *.mov
-*.avi
-*.webm
+
+# Except curated sample videos for the Video Library feature
+!frontend/public/samples/*.mp4
+!frontend/public/samples/*.mov
 
 # Next.js build output
 .next/
