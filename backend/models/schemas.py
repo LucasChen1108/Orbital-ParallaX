@@ -53,6 +53,7 @@ class PredictedTrajectory(BaseModel):
     x_positions_m: list[float]
     y_positions_m: list[float]
 
+
 class SandboxRequest(BaseModel):
     v0: float = Field(..., ge=0, le=100, description="Initial speed, m/s")
     angle_deg: float = Field(..., ge=-90, le=90)
@@ -66,6 +67,7 @@ class SandboxResponse(BaseModel):
     timestamps: list[float]
     x_positions_m: list[float]
     y_positions_m: list[float]
+
 
 class PhysicsResult(BaseModel):
     timestamps: list[float]

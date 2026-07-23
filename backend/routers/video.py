@@ -137,6 +137,7 @@ def analyse_video(req: AnalysisRequest):
         has_overlay=has_overlay,
     )
 
+
 @router.post("/predict", response_model=SandboxResponse)
 def predict_sandbox_trajectory(req: SandboxRequest):
     """
@@ -153,6 +154,7 @@ def predict_sandbox_trajectory(req: SandboxRequest):
         y0=req.y0,
     )
     return SandboxResponse(**data)
+
 
 @router.get("/frame/{video_id}/{frame_index}")
 def get_frame(video_id: str, frame_index: int):

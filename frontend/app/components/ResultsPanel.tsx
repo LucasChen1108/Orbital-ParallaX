@@ -201,7 +201,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       ctx.beginPath();
       gx2.forEach((x, i) => {
         const [cx, cy] = toCanvas(x, gy2[i], bounds);
-        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+        if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
       });
       ctx.stroke(); ctx.setLineDash([]);
     }
@@ -211,7 +211,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     ctx.beginPath();
     xs.forEach((x, i) => {
       const [cx, cy] = toCanvas(x, ys[i], bounds);
-      i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
     });
     ctx.stroke();
 

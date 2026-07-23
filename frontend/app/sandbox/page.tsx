@@ -44,7 +44,7 @@ export default function SandboxPage() {
         </div>
 
         <div style={{ marginTop: "20px", padding: "16px 20px", background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: "12px", fontSize: "13px", color: "#581c87", lineHeight: 1.6 }}>
-          <strong>Try this:</strong> drag the launch angle from 70° toward 90°. Range collapses fast while max height barely moves — that's <code>range = v0²·sin(2θ)/g</code> heading to zero as θ→90°, while height (<code>v0²·sin²θ/(2g)</code>) keeps climbing. A steep, narrow arc versus a low, wide one.
+            <strong>Try this:</strong> drag the launch angle from 70° toward 90°. Range collapses fast while max height barely moves — that&apos;s <code>range = v0²·sin(2θ)/g</code> heading to zero as θ→90°, while height (<code>v0²·sin²θ/(2g)</code>) keeps climbing. A steep, narrow arc versus a low, wide one.  
         </div>
       </main>
     </div>
