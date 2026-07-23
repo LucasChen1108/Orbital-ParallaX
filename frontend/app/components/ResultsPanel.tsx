@@ -698,7 +698,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
             dragCoeff: result.drag_coefficient ?? 0,
           }}
           overlay={uploadData ? {
-            frameUrl: `${BASE}/frame/${uploadData.video_id}/${frameStart}`,
+            frameUrl: `${BASE}/frame/${uploadData.video_id}/${analysis?.detections?.[0]?.[0] ?? frameStart}`,
             videoWidthPx: uploadData.width,
             videoHeightPx: uploadData.height,
             pxPerMetre: result.px_per_metre,

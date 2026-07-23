@@ -4,8 +4,8 @@ import { API_ROOT } from "../lib/api";
 
 const REAL_COLOR = "#2563a8";
 const SANDBOX_COLOR = "#7c3aed";
-const DEFAULT_SCALE = 14;   // px per metre, abstract chart mode
-const ABSTRACT_H = 400;     // fixed canvas height when not overlaying on video
+const DEFAULT_SCALE = 14;
+const ABSTRACT_H = 400;
 const ABSTRACT_PAD = 48;
 
 interface RealTrajectory {
@@ -30,7 +30,7 @@ interface OverlayProps {
 interface Props {
   realTrajectory?: RealTrajectory | null;
   initialParams?: Partial<SandboxParams>;
-  overlay?: OverlayProps; // when provided, "On video" becomes available
+  overlay?: OverlayProps;
 }
 
 const DEFAULTS: SandboxParams = { v0: 15, angleDeg: 45, g: 9.81, dragCoeff: 0 };
@@ -45,7 +45,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
   const [baseScale, setBaseScale] = useState(DEFAULT_SCALE);
   const [hover, setHover] = useState<{ xm: number; ym: number } | null>(null);
   const [panning, setPanning] = useState(false);
-  const [useOverlayView, setUseOverlayView] = useState(true); // user's choice, only relevant when `overlay` is provided
+  const [useOverlayView, setUseOverlayView] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bgImgRef = useRef<HTMLImageElement | null>(null);
@@ -74,7 +74,20 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
     if (requiredScale > 0) setBaseScale(s => Math.min(s, requiredScale));
   }
 
-  // Debounced fetch — 150ms after the user stops dragging a slider.
+  // Switching view mode always starts from a clean zoom/pan — prevents a
+  // zoom/pan carried over from one mode from misplacing the other mode's view.
+  function switchToOverlay() {
+    setUseOverlayView(true);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+  function switchToChart() {
+    setUseOverlayView(false);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    fitAbstractScale(predicted);
+  }
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -105,14 +118,11 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
 
   const worldToCanvas = useCallback((xm: number, ym: number): [number, number] => {
     if (isOverlayMode && overlay) {
-      // Video-pixel space: px_x = x_m * pxPerMetre, px_y = -y_m * pxPerMetre
-      // (matches backend calculator.py's inverse convention exactly)
       const scaleFactor = W / overlay.videoWidthPx;
       const pxX = xm * overlay.pxPerMetre * scaleFactor;
       const pxY = -ym * overlay.pxPerMetre * scaleFactor;
       return [(pxX - W / 2) * zoom + W / 2 + pan.x, (pxY - H / 2) * zoom + H / 2 + pan.y];
     }
-    // Abstract mode: launch point is FIXED at a stable pixel anchor.
     const originPx = pad + 10;
     const originPy = H - pad - 10;
     const px = originPx + (xm - x0) * baseScale;
@@ -197,8 +207,6 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
     }
   }, [isOverlayMode, realTrajectory, predicted, x0, y0, hover, worldToCanvas, H, pad]);
 
-  // Load the background frame image whenever overlay data is provided —
-  // independent of the toggle, so switching "On video" back is instant.
   useEffect(() => {
     if (!overlay) { bgImgRef.current = null; return; }
     const img = new Image();
@@ -211,7 +219,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
   useEffect(() => { draw(); }, [draw]);
 
   useEffect(() => {
-    if (isOverlayMode) return; // fixed view, no zoom
+    if (isOverlayMode) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const handler = (e: WheelEvent) => {
@@ -223,7 +231,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
   }, [isOverlayMode]);
 
   function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (isOverlayMode) return; // fixed view, no panning
+    if (isOverlayMode) return;
     isPanning.current = true; setPanning(true);
     lastMouse.current = { x: e.clientX, y: e.clientY };
   }
@@ -274,7 +282,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
           {overlay && (
             <div style={{ display: "flex", background: "#f3f4f6", borderRadius: "8px", padding: "2px", gap: "2px" }}>
               <button
-                onClick={() => setUseOverlayView(true)}
+                onClick={switchToOverlay}
                 style={{
                   fontSize: "11px", padding: "4px 10px", borderRadius: "6px", border: "none", cursor: "pointer",
                   background: useOverlayView ? "#fff" : "transparent",
@@ -286,7 +294,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
                 On video
               </button>
               <button
-                onClick={() => { setUseOverlayView(false); fitAbstractScale(predicted); }}
+                onClick={switchToChart}
                 style={{
                   fontSize: "11px", padding: "4px 10px", borderRadius: "6px", border: "none", cursor: "pointer",
                   background: !useOverlayView ? "#fff" : "transparent",
