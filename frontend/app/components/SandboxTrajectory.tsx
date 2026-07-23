@@ -351,7 +351,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "18px" }}>
         <SliderControl label="Initial velocity" unit=" m/s" value={params.v0} min={1} max={40} step={0.5} onChange={v => updateParam("v0", v)} />
-        <SliderControl label="Launch angle" unit="°" value={params.angleDeg} min={-90} max={90} step={1} onChange={v => updateParam("angleDeg", v)} />
+        <SliderControl label="Launch angle" unit="°" value={params.angleDeg} min={-180} max={180} step={1} onChange={v => updateParam("angleDeg", v)} />
         <SliderControl label="Gravity" unit=" m/s²" value={params.g} min={1} max={20} step={0.1} onChange={v => updateParam("g", v)} />
         <SliderControl label="Drag coefficient" unit="" value={params.dragCoeff} min={0} max={0.2} step={0.005} onChange={v => updateParam("dragCoeff", v)} />
       </div>
