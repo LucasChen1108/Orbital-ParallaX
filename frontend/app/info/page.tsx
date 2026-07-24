@@ -47,7 +47,7 @@ const FEATURES = [
   { label: "Air resistance model", desc: "Optional quadratic drag model fits both gravity and a drag coefficient to your trajectory via least-squares." },
   { label: "Strobe view", desc: "Renders ghost ball images at equal time intervals — just like a physics stroboscope — revealing how spacing encodes velocity." },
   { label: "PDF & CSV export", desc: "Download a full experiment report with trajectory chart and physics parameters, ready for your lab write-up." },
-  { label: "Sandbox mode (coming)", desc: "Drag sliders to modify gravity, velocity, and drag in real time and compare the modified ghost trajectory against the original." },
+  { label: "Sandbox mode", desc: "Drag sliders to modify gravity, velocity, angle, and drag in real time and compare the modified trajectory against the original, either as a chart or overlaid on your own video." },
 ];
 
 const GithubIcon = () => (
@@ -68,10 +68,15 @@ export default function InfoPage() {
       <Navbar />
 
       {/* Hero */}
-      <section style={{ maxWidth: "820px", margin: "0 auto", padding: "72px 2rem 56px", textAlign: "center" }}>
+      <section style={{
+        maxWidth: "820px", margin: "0 auto",
+        paddingTop: "clamp(44px,10vw,72px)", paddingBottom: "clamp(36px,7vw,56px)",
+        paddingLeft: "clamp(18px,5vw,32px)", paddingRight: "clamp(18px,5vw,32px)",
+        textAlign: "center",
+      }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.jpg" alt="ArcLab" style={{ height: "64px", width: "auto" }} />
+          <img src="/logo.jpg" alt="ArcLab" style={{ height: "clamp(48px,11vw,64px)", width: "auto" }} />
         </div>
 
         <div style={{
@@ -79,15 +84,15 @@ export default function InfoPage() {
           background: GLIGHT, border: `1px solid ${GBORDER}`,
           borderRadius: "20px", padding: "4px 14px", marginBottom: "20px",
         }}>
-          <span style={{ fontSize: "12px", color: G, letterSpacing: "0.05em", fontWeight: 500 }}>
+          <span style={{ fontSize: "11px", color: G, letterSpacing: "0.05em", fontWeight: 500 }}>
             Team ParallaX · NUS Orbital 2026 · Apollo
           </span>
         </div>
 
-        <h1 style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "16px", color: "#111827" }}>
+        <h1 style={{ fontSize: "clamp(28px,8vw,40px)", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "16px", color: "#111827" }}>
           ArcLab
         </h1>
-        <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.75, maxWidth: "520px", margin: "0 auto" }}>
+        <p style={{ fontSize: "clamp(13px,3.6vw,16px)", color: "#6b7280", lineHeight: 1.75, maxWidth: "520px", margin: "0 auto" }}>
           Built by team ParallaX for NUS Orbital 2026, ArcLab is a web-based physics analysis platform
           that uses computer vision to extract real physical parameters from any projectile video —
           gravity, velocity, launch angle, full trajectory. No carbon paper. No manual frame clicking.
@@ -97,10 +102,14 @@ export default function InfoPage() {
 
       {/* Problem vs Solution */}
       <section style={{ borderTop: "1px solid #e5e7eb", borderBottom: "1px solid #e5e7eb", background: "#f8f9fa" }}>
-        <div style={{ maxWidth: "820px", margin: "0 auto", padding: "56px 2rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
+        <div className="problem-solution-grid" style={{
+          maxWidth: "820px", margin: "0 auto",
+          paddingTop: "clamp(36px,8vw,56px)", paddingBottom: "clamp(36px,8vw,56px)",
+          paddingLeft: "clamp(18px,5vw,32px)", paddingRight: "clamp(18px,5vw,32px)",
+        }}>
           <div>
             <div style={{ fontSize: "11px", color: "#dc2626", letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>THE PROBLEM</div>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35, color: "#111827" }}>
+            <h2 style={{ fontSize: "clamp(17px,4.5vw,20px)", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35, color: "#111827" }}>
               Physics experiments are tedious and error-prone
             </h2>
             <p style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.75 }}>
@@ -112,7 +121,7 @@ export default function InfoPage() {
           </div>
           <div>
             <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>OUR SOLUTION</div>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35, color: "#111827" }}>
+            <h2 style={{ fontSize: "clamp(17px,4.5vw,20px)", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "14px", lineHeight: 1.35, color: "#111827" }}>
               ArcLab automates the entire analysis pipeline
             </h2>
             <p style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.75 }}>
@@ -125,18 +134,22 @@ export default function InfoPage() {
       </section>
 
       {/* Team */}
-      <section style={{ maxWidth: "820px", margin: "0 auto", padding: "64px 2rem" }}>
+      <section style={{
+        maxWidth: "820px", margin: "0 auto",
+        paddingTop: "clamp(44px,8vw,64px)", paddingBottom: "clamp(44px,8vw,64px)",
+        paddingLeft: "clamp(18px,5vw,32px)", paddingRight: "clamp(18px,5vw,32px)",
+      }}>
         <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>THE TEAM</div>
-        <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "8px", color: "#111827" }}>Team ParallaX</h2>
+        <h2 style={{ fontSize: "clamp(20px,5.5vw,24px)", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "8px", color: "#111827" }}>Team ParallaX</h2>
         <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "28px", lineHeight: 1.7 }}>
           ParallaX is a two-person NUS team combining software engineering and physics expertise to build ArcLab.
           We believe physics education should be hands-on, visual, and accessible to anyone with a phone and a ball.
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="team-grid">
           {MEMBERS.map(({ name, nickname, photo, github, linkedin, role, colour, bg, border, skills, note }) => (
             <div key={name} style={{
               background: "#fff", border: "1px solid #e5e7eb",
-              borderRadius: "14px", padding: "24px",
+              borderRadius: "14px", padding: "clamp(18px,4.5vw,24px)",
               boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
@@ -179,12 +192,12 @@ export default function InfoPage() {
                 ))}
               </div>
 
-              <div style={{ display: "flex", gap: "8px", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
                 <a href={github} target="_blank" rel="noopener noreferrer" style={{
                   display: "flex", alignItems: "center", gap: "6px",
                   fontSize: "12px", color: "#041404", fontWeight: 500,
                   background: "#f9fafb", border: "1px solid #e5e7eb",
-                  borderRadius: "8px", padding: "6px 12px", textDecoration: "none",
+                  borderRadius: "8px", padding: "8px 12px", textDecoration: "none",
                 }}>
                   <GithubIcon /> GitHub
                 </a>
@@ -192,7 +205,7 @@ export default function InfoPage() {
                   display: "flex", alignItems: "center", gap: "6px",
                   fontSize: "12px", color: "#1f54a9", fontWeight: 500,
                   background: "#f9fafb", border: "1px solid #e5e7eb",
-                  borderRadius: "8px", padding: "6px 12px", textDecoration: "none",
+                  borderRadius: "8px", padding: "8px 12px", textDecoration: "none",
                 }}>
                   <LinkedInIcon /> LinkedIn
                 </a>
@@ -204,10 +217,14 @@ export default function InfoPage() {
 
       {/* Features */}
       <section style={{ background: "#f8f9fa", borderTop: "1px solid #e5e7eb" }}>
-        <div style={{ maxWidth: "820px", margin: "0 auto", padding: "64px 2rem" }}>
+        <div style={{
+          maxWidth: "820px", margin: "0 auto",
+          paddingTop: "clamp(44px,8vw,64px)", paddingBottom: "clamp(44px,8vw,64px)",
+          paddingLeft: "clamp(18px,5vw,32px)", paddingRight: "clamp(18px,5vw,32px)",
+        }}>
           <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>FEATURES</div>
-          <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px", color: "#111827" }}>What ArcLab does</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
+          <h2 style={{ fontSize: "clamp(20px,5.5vw,24px)", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px", color: "#111827" }}>What ArcLab does</h2>
+          <div className="features-grid">
             {FEATURES.map(({ label, desc }) => (
               <div key={label} style={{
                 background: "#f9fafb", border: "1px solid #e5e7eb",
@@ -222,10 +239,14 @@ export default function InfoPage() {
       </section>
 
       {/* SWE practices */}
-      <section style={{ maxWidth: "820px", margin: "0 auto", padding: "64px 2rem" }}>
+      <section style={{
+        maxWidth: "820px", margin: "0 auto",
+        paddingTop: "clamp(44px,8vw,64px)", paddingBottom: "clamp(44px,8vw,64px)",
+        paddingLeft: "clamp(18px,5vw,32px)", paddingRight: "clamp(18px,5vw,32px)",
+      }}>
         <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", marginBottom: "10px", fontWeight: 600 }}>HOW WE BUILD</div>
-        <h2 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px", color: "#111827" }}>Software engineering practices</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        <h2 style={{ fontSize: "clamp(20px,5.5vw,24px)", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "28px", color: "#111827" }}>Software engineering practices</h2>
+        <div className="swe-grid">
           {SWE_PRACTICES.map(({ label, desc }) => (
             <div key={label} style={{ borderLeft: `3px solid ${G}`, paddingLeft: "16px" }}>
               <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "#111827" }}>{label}</div>
@@ -238,6 +259,54 @@ export default function InfoPage() {
       <footer style={{ borderTop: "1px solid #e5e7eb", padding: "24px 2rem", textAlign: "center", background: "#fff" }}>
         <span style={{ fontSize: "12px", color: "#9ca3af" }}>ArcLab · Team ParallaX · NUS Orbital 2026</span>
       </footer>
+
+      <style jsx>{`
+        .problem-solution-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 40px;
+        }
+        .team-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .features-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 14px;
+        }
+        .swe-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        @media (max-width: 900px) {
+          .features-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+        @media (max-width: 700px) {
+          .problem-solution-grid {
+            grid-template-columns: 1fr;
+            gap: 28px;
+          }
+        }
+        @media (max-width: 600px) {
+          .team-grid {
+            grid-template-columns: 1fr;
+          }
+          .swe-grid {
+            grid-template-columns: 1fr;
+            gap: 24px;
+          }
+        }
+        @media (max-width: 560px) {
+          .features-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </div>
   );
 }

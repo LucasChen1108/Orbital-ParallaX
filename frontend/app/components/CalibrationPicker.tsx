@@ -41,9 +41,9 @@ export default function CalibrationPicker({
 
     points.forEach((p, i) => {
       ctx.fillStyle = G;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 11px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(String(i + 1), p.x, p.y);
     });
@@ -163,10 +163,10 @@ export default function CalibrationPicker({
             <div style={{ display:"flex", gap:"10px", alignItems:"center", flexWrap:"wrap" }}>
               <div style={{ display:"flex", alignItems:"center", background:"#fff", border:"1px solid #cbd5e1", borderRadius:"9px", overflow:"hidden" }}>
                 <input
-                  type="number" min="0.001" step="0.001" value={diameterM}
+                  type="number" inputMode="decimal" min="0.001" step="0.001" value={diameterM}
                   onChange={e => { setDiameterM(e.target.value); setAutoResult(null); }}
                   placeholder="e.g. 0.22"
-                  style={{ width:"130px", padding:"10px 12px", border:"none", outline:"none", fontSize:"14px" }}
+                  style={{ width:"130px", padding:"12px 12px", border:"none", outline:"none", fontSize:"16px" }}
                 />
                 <span style={{ padding:"10px 12px", color:"#64748b", background:"#f8fafc", fontSize:"13px" }}>m</span>
               </div>
@@ -202,7 +202,7 @@ export default function CalibrationPicker({
       ) : (
         <div>
           <p style={{ fontSize:"13px", color:"#6b7280", marginBottom:"14px" }}>
-            Click two points whose real-world distance you know.
+            Tap two points whose real-world distance you know.
           </p>
           <div style={{ position:"relative", width:"100%", borderRadius:"12px", overflow:"hidden", border:"1px solid #e5e7eb" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -214,7 +214,11 @@ export default function CalibrationPicker({
             <canvas
               ref={canvasRef} width={videoWidth} height={videoHeight}
               onClick={handleCanvasClick}
-              style={{ position:"absolute", inset:0, width:"100%", height:"100%", cursor:points.length < 2 ? "crosshair" : "default" }}
+              style={{
+                position:"absolute", inset:0, width:"100%", height:"100%",
+                cursor:points.length < 2 ? "crosshair" : "default",
+                touchAction: "manipulation",
+              }}
             />
           </div>
           <div style={{ marginTop:"18px" }}>
@@ -223,14 +227,14 @@ export default function CalibrationPicker({
             </label>
             <div style={{ display:"flex", alignItems:"center", width:"180px", background:"#fff", border:"1px solid #cbd5e1", borderRadius:"9px", overflow:"hidden" }}>
               <input
-                type="number" min="0.001" step="0.001" value={distance}
+                type="number" inputMode="decimal" min="0.001" step="0.001" value={distance}
                 onChange={e => setDistance(e.target.value)}
                 placeholder="e.g. 1.0"
-                style={{ width:"130px", padding:"10px 12px", border:"none", outline:"none", fontSize:"14px" }}
+                style={{ width:"130px", padding:"12px 12px", border:"none", outline:"none", fontSize:"16px" }}
               />
               <span style={{ marginLeft:"auto", padding:"10px 12px", color:"#64748b", background:"#f8fafc", fontSize:"13px" }}>m</span>
             </div>
-            <div style={{ display:"flex", gap:"10px", marginTop:"14px" }}>
+            <div style={{ display:"flex", gap:"10px", marginTop:"14px", flexWrap:"wrap" }}>
               <button onClick={confirmManual} disabled={points.length < 2 || !distance || done} style={primaryButtonStyle(points.length < 2 || !distance || done)}>
                 {done ? "Calibration set" : "Confirm manual calibration"}
               </button>
@@ -279,7 +283,7 @@ function AutoCalibrationSummary({ result, onConfirm, onManual, onAdjustInterval 
       <div style={{ fontSize:"14px", fontWeight:700, color:colours.text, marginBottom:"12px" }}>
         {warning ? "Perspective or detection instability detected" : "Automatic calibration ready"}
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(110px, 1fr))", gap:"10px", marginBottom:"12px" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(110px, 1fr))", gap:"10px", marginBottom:"12px" }}>
         <Stat label="Valid detections" value={`${result.valid_detections}/${result.total_frames}`} />
         <Stat label="Median diameter" value={`${result.median_diameter_px.toFixed(1)} px`} />
         <Stat label="Size variation" value={`${result.variation_cv_pct.toFixed(1)}%`} />
@@ -308,13 +312,15 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 const primaryButtonStyle = (disabled: boolean): React.CSSProperties => ({
   background:disabled ? "#bfdbfe" : G, color:"#fff", border:"none",
-  padding:"10px 18px", borderRadius:"9px", fontSize:"13px", fontWeight:650,
+  padding:"12px 18px", borderRadius:"9px", fontSize:"13px", fontWeight:650,
   cursor:disabled ? "not-allowed" : "pointer",
+  minHeight:"44px",
 });
 
 const secondaryButtonStyle: React.CSSProperties = {
   background:"#fff", color:"#475569", border:"1px solid #cbd5e1",
-  padding:"9px 14px", borderRadius:"9px", fontSize:"12px", cursor:"pointer",
+  padding:"11px 14px", borderRadius:"9px", fontSize:"12px", cursor:"pointer",
+  minHeight:"44px",
 };
 
 const linkButtonStyle: React.CSSProperties = {

@@ -20,7 +20,7 @@ export default function VideoUploader({ onUploaded }: Props) {
       const data = await uploadVideo(file);
       onUploaded(data);
     } catch {
-      setError("Upload failed. Make sure the backend is running on port 8000.");
+      setError("Upload failed. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export default function VideoUploader({ onUploaded }: Props) {
         onDrop={handleDrop}
         style={{
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          gap: "16px", padding: "56px 32px", borderRadius: "14px",
+          gap: "16px", padding: "clamp(32px, 8vw, 56px) clamp(16px, 6vw, 32px)", borderRadius: "14px",
           cursor: loading ? "not-allowed" : "pointer",
           border: `2px dashed ${dragging ? G : "#d1d5db"}`,
           background: dragging ? "#eff6ff" : "#f9fafb",
@@ -53,16 +53,17 @@ export default function VideoUploader({ onUploaded }: Props) {
         }}
       >
         <div style={{
-          width: "64px", height: "64px", borderRadius: "50%",
+          width: "clamp(52px, 12vw, 64px)", height: "clamp(52px, 12vw, 64px)", borderRadius: "50%",
           background: "#eff6ff", border: `1px solid #bfdbfe`,
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: "clamp(22px, 5vw, 28px)",
+          flexShrink: 0,
         }}>
           {loading ? "⏳" : "🎬"}
         </div>
 
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "16px", fontWeight: 600, color: "#111827", marginBottom: "6px" }}>
-            {loading ? "Uploading…" : "Drop your video here"}
+          <div style={{ fontSize: "clamp(14px, 4vw, 16px)", fontWeight: 600, color: "#111827", marginBottom: "6px" }}>
+            {loading ? "Uploading…" : "Tap to upload or drop your video here"}
           </div>
           <div style={{ fontSize: "13px", color: "#6b7280" }}>
             MP4, MOV, AVI · or{" "}
@@ -79,7 +80,7 @@ export default function VideoUploader({ onUploaded }: Props) {
         />
       </label>
 
-      <div style={{ marginTop: "14px", display: "flex", gap: "8px", justifyContent: "center" }}>
+      <div style={{ marginTop: "14px", display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
         {["MP4", "MOV", "AVI", "WEBM"].map(fmt => (
           <span key={fmt} style={{
             fontSize: "11px", padding: "3px 10px", borderRadius: "6px",
