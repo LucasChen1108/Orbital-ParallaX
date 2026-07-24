@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useIsMobile } from "../hook/useIsMobile";
 
-const STEPS = ["Upload", "Interval", "Ball", "Calibrate", "Analyse", "Results"];
+const STEPS = ["Upload", "Interval", "Calibrate", "Analyse", "Results"];
 
 interface NavbarProps {
   currentStep?: number;

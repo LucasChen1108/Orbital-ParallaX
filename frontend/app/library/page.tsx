@@ -7,8 +7,6 @@ import { SAMPLE_VIDEOS, SampleVideo } from "../lib/sampleVideos";
 import { UploadResponse, AnalysisResponse, PhysicsResult } from "../types/analysis";
 
 const G = "#2563a8";
-const GLIGHT = "#eff6ff";
-const GBORDER = "#bfdbfe";
 
 async function sampleVideoToFile(url: string, filename: string): Promise<File> {
   const res = await fetch(url);

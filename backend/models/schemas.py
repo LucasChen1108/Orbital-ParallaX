@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Literal, Optional
 
 
 class UploadResponse(BaseModel):
@@ -32,11 +32,37 @@ class FrameRange(BaseModel):
 
 
 class CalibrationPoints(BaseModel):
-    x1: float
-    y1: float
-    x2: float
-    y2: float
-    real_world_distance_m: float
+    mode: Literal["manual", "ball_diameter"] = "manual"
+    x1: Optional[float] = None
+    y1: Optional[float] = None
+    x2: Optional[float] = None
+    y2: Optional[float] = None
+    real_world_distance_m: Optional[float] = None
+    ball_diameter_m: Optional[float] = None
+    px_per_metre: Optional[float] = None
+    quality: Optional[Literal["good", "moderate", "unreliable"]] = None
+    variation_cv_pct: Optional[float] = None
+    warning: Optional[str] = None
+    warning_accepted: bool = False
+
+
+class AutoCalibrationRequest(BaseModel):
+    video_id: str
+    frame_range: FrameRange
+    ball_diameter_m: float = Field(..., gt=0, le=10)
+
+
+class AutoCalibrationResponse(BaseModel):
+    px_per_metre: float
+    median_diameter_px: float
+    mean_diameter_px: float
+    diameter_std_px: float
+    variation_cv_pct: float
+    quality: Literal["good", "moderate", "unreliable"]
+    warning: Optional[str] = None
+    valid_detections: int
+    raw_detections: int
+    total_frames: int
 
 
 class AnalysisRequest(BaseModel):

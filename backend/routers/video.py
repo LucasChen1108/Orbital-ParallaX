@@ -6,7 +6,8 @@ from models.schemas import (
     UploadResponse,
     SampleColourRequest, SampleColourResponse,
     AnalysisRequest, AnalysisResponse, PhysicsResult,
-    SandboxRequest, SandboxResponse
+    SandboxRequest, SandboxResponse,
+    AutoCalibrationRequest, AutoCalibrationResponse,
 )
 from services.video_service import (
     save_video, get_video_path, get_video_fps,
@@ -16,12 +17,18 @@ from physics_engine import (
     sample_ball_colour, track_ball,
     compute_px_per_metre, compute_physics,
     compute_physics_with_drag, simulate_trajectory,
+    track_yolo_detailed, estimate_ball_scale,
 )
 
 router = APIRouter()
 
 ALLOWED_TYPES = {"video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"}
 MAX_SIZE_MB = 200
+_YOLO_DETECTION_CACHE: dict[tuple[str, int, int], list[dict]] = {}
+
+
+def _cache_key(video_id: str, start_frame: int, end_frame: int):
+    return video_id, start_frame, end_frame
 
 
 @router.post("/upload", response_model=UploadResponse)
@@ -50,6 +57,29 @@ def sample_colour(req: SampleColourRequest):
     return SampleColourResponse(**result)
 
 
+@router.post("/auto-calibrate", response_model=AutoCalibrationResponse)
+def auto_calibrate(req: AutoCalibrationRequest):
+    try:
+        path = get_video_path(req.video_id)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+    start = req.frame_range.start_frame
+    end = req.frame_range.end_frame
+    if end < start:
+        raise HTTPException(422, "End frame must not be before start frame.")
+
+    detailed = track_yolo_detailed(path, start, end)
+    total = end - start + 1
+    try:
+        result = estimate_ball_scale(detailed, req.ball_diameter_m, total)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+    _YOLO_DETECTION_CACHE[_cache_key(req.video_id, start, end)] = detailed
+    return AutoCalibrationResponse(**result)
+
+
 @router.post("/analyse", response_model=AnalysisResponse)
 def analyse_video(req: AnalysisRequest):
     try:
@@ -57,22 +87,58 @@ def analyse_video(req: AnalysisRequest):
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
 
+    key = _cache_key(
+        req.video_id,
+        req.frame_range.start_frame,
+        req.frame_range.end_frame,
+    )
+    cached = _YOLO_DETECTION_CACHE.get(key) if req.method == "yolo" else None
+    c = req.calibration
     try:
-        c = req.calibration
-        px_per_metre = compute_px_per_metre(
-            c.x1, c.y1, c.x2, c.y2, c.real_world_distance_m
-        )
+        if c.mode == "ball_diameter":
+            if req.method != "yolo":
+                raise ValueError("Ball-diameter calibration requires YOLO tracking.")
+            if c.ball_diameter_m is None or c.ball_diameter_m <= 0:
+                raise ValueError("Ball diameter is missing.")
+            if cached is None:
+                cached = track_yolo_detailed(
+                    path,
+                    req.frame_range.start_frame,
+                    req.frame_range.end_frame,
+                )
+                _YOLO_DETECTION_CACHE[key] = cached
+            total = req.frame_range.end_frame - req.frame_range.start_frame + 1
+            auto_scale = estimate_ball_scale(cached, c.ball_diameter_m, total)
+            if auto_scale["quality"] == "unreliable" and not c.warning_accepted:
+                raise ValueError(
+                    "Automatic calibration is unreliable. Accept the warning "
+                    "or use manual calibration."
+                )
+            px_per_metre = auto_scale["px_per_metre"]
+        else:
+            manual_values = (
+                c.x1, c.y1, c.x2, c.y2, c.real_world_distance_m
+            )
+            if any(value is None for value in manual_values):
+                raise ValueError("Manual calibration points are incomplete.")
+            px_per_metre = compute_px_per_metre(*manual_values)
     except ValueError as e:
         raise HTTPException(422, f"Calibration error: {e}")
 
-    detections = track_ball(
-        path,
-        req.frame_range.start_frame,
-        req.frame_range.end_frame,
-        hsv_lower=req.hsv_lower,
-        hsv_upper=req.hsv_upper,
-        method=req.method,
-    )
+    if cached is not None:
+        detections = [
+            (item["frame_index"], item["cx"], item["cy"])
+            for item in cached
+        ]
+    else:
+        detections = track_ball(
+            path,
+            req.frame_range.start_frame,
+            req.frame_range.end_frame,
+            hsv_lower=req.hsv_lower,
+            hsv_upper=req.hsv_upper,
+            method=req.method,
+        )
 
     if len(detections) < 5:
         return AnalysisResponse(

@@ -5,6 +5,7 @@ import {
   AnalysisResponse,
   CalibrationPoints,
   FrameRange,
+  AutoCalibrationResponse,
 } from "../types/analysis";
 import { MOCK_UPLOAD, MOCK_SAMPLE_COLOUR, MOCK_ANALYSIS } from "./mockData";
 
@@ -60,6 +61,19 @@ export async function analyseVideo(
     hsv_upper,
     use_air_resistance,
     method,
+  });
+  return res.data;
+}
+
+export async function autoCalibrateBall(
+  video_id: string,
+  frame_range: FrameRange,
+  ball_diameter_m: number
+): Promise<AutoCalibrationResponse> {
+  const res = await axios.post<AutoCalibrationResponse>(`${BASE}/auto-calibrate`, {
+    video_id,
+    frame_range,
+    ball_diameter_m,
   });
   return res.data;
 }

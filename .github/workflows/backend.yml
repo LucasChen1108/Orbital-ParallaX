@@ -44,5 +44,3 @@ jobs:
         run: |
           cd backend
           PYTHONPATH=$GITHUB_WORKSPACE pytest tests/ -v
-        continue-on-error: true  # remove this once you have backend 
-        

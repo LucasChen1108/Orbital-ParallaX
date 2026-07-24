@@ -95,6 +95,21 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     }
   }
   const fitLabel = result.drag_coefficient != null ? "Drag Model" : "Parabolic";
+  const automaticCalibration = calibration?.mode === "ball_diameter" ? calibration : null;
+  const calibrationRows: string[][] = !calibration ? [] :
+    calibration.mode === "ball_diameter"
+      ? [
+          ["Calibration Method", "Automatic — Ball diameter"],
+          ["Ball Diameter", `${(calibration.ball_diameter_m * 100).toFixed(2)} cm`],
+          ["Diameter Variation", `${calibration.variation_cv_pct.toFixed(1)}%`],
+          ["Calibration Quality", calibration.quality],
+        ]
+      : [
+          ["Calibration Method", "Manual — Known distance"],
+          ["Cal Pt 1", `(${calibration.x1.toFixed(1)}, ${calibration.y1.toFixed(1)})`],
+          ["Cal Pt 2", `(${calibration.x2.toFixed(1)}, ${calibration.y2.toFixed(1)})`],
+          ["Cal Distance", `${calibration.real_world_distance_m} m`],
+        ];
   const confidenceInterval = (key: string, digits: number, unit: string) => {
     const interval = result.confidence_intervals?.[key];
     if (!interval) return undefined;
@@ -107,7 +122,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     return `± ${halfWidth.toFixed(digits)}`;
   };
 
-  // Video sync
   // Video sync
   useEffect(() => {
     const activeVideo = videoTab === "original" ? videoRef.current : overlayVideoRef.current;
@@ -132,7 +146,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   useEffect(() => {                                            
     const activeVideo = videoTab === "original" ? videoRef.current : overlayVideoRef.current;  
     if (activeVideo) activeVideo.currentTime = (frameStart + currentFrameIdx) / fps;  
-  }, [videoTab]); 
+  }, [videoTab, currentFrameIdx, frameStart, fps]);
 
   // Wheel zoom
   useEffect(() => {
@@ -172,11 +186,9 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     const bounds = getBounds();
     const { minX, maxX, minY, maxY } = bounds;
 
-    // White background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W, H);
 
-    // Grid
     const xSteps = isMobile ? 5 : 7, ySteps = isMobile ? 4 : 5;
     ctx.strokeStyle = "#e5e7eb";
     ctx.lineWidth = 1;
@@ -195,19 +207,16 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       ctx.fillText(xVal.toFixed(2), gx, H - pad + 14);
     }
 
-    // Axis labels
     ctx.fillStyle = "#6b7280"; ctx.font = "11px system-ui"; ctx.textAlign = "center";
     ctx.fillText("x (m)", W / 2, H - 4);
     ctx.save(); ctx.translate(14, H / 2); ctx.rotate(-Math.PI / 2);
     ctx.fillText("y (m)", 0, 0); ctx.restore();
 
-    // Zoom indicator
     if (zoom !== 1) {
       ctx.fillStyle = G; ctx.font = "bold 11px monospace"; ctx.textAlign = "right";
       ctx.fillText(`${zoom.toFixed(1)}×`, W - 8, 18);
     }
 
-    // Ghost trajectory
     if (showGhost && result.predicted_trajectory) {
       const gx2 = result.predicted_trajectory.x_positions_m;
       const gy2 = result.predicted_trajectory.y_positions_m;
@@ -220,7 +229,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       ctx.stroke(); ctx.setLineDash([]);
     }
 
-    // Tracked trajectory — green
     ctx.strokeStyle = G; ctx.lineWidth = 3; ctx.lineJoin = "round";
     ctx.beginPath();
     xs.forEach((x, i) => {
@@ -229,14 +237,12 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     });
     ctx.stroke();
 
-    // Strobe dots
     if (showStrobe && strobeInterval > 0) {
       const ts = result.timestamps;
       const minT = ts[0];
       const maxT = ts[ts.length - 1];
       const strobeIndices: number[] = [];
 
-      // Find the closest frames for each multiple of strobeInterval
       let k = Math.ceil(minT / strobeInterval);
       while (true) {
         const targetT = k * strobeInterval;
@@ -261,33 +267,29 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       strobeIndices.forEach((i) => {
         const [cx, cy] = toCanvas(xs[i], ys[i], bounds);
 
-        // Draw 3D-like ghost ball with radial gradient
         const r = isMobile ? 6 : 8;
         const grad = ctx.createRadialGradient(cx - 2, cy - 2, 1, cx, cy, r);
         grad.addColorStop(0, "#ffffff");
-        grad.addColorStop(0.3, "#93c5fd"); // light blue
-        grad.addColorStop(1, "#2563a8");   // primary brand blue
+        grad.addColorStop(0.3, "#93c5fd");
+        grad.addColorStop(1, "#2563a8");
         
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.fill();
 
-        // White border
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Subtle arc shadow on the bottom-right edge of the ball
         ctx.strokeStyle = "rgba(0,0,0,0.2)";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0.25 * Math.PI, 0.75 * Math.PI);
         ctx.stroke();
 
-        // Small timestamp label next to each dot
         if (showStrobeTimestamps) {
           ctx.fillStyle = "#374151";
           ctx.font = isMobile ? "9px monospace" : "10px monospace";
@@ -297,7 +299,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       });
     }
 
-    // Start/end labels
     function drawLabel(px: number, py: number, label: string, alignRight: boolean) {
       if (!ctx) return;
       ctx.fillStyle = G;
@@ -325,7 +326,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     drawLabel(sx, sy, `START\nt=${result.timestamps[0].toFixed(3)}s\nx=${xs[0].toFixed(3)}m\ny=${ys[0].toFixed(3)}m`, false);
     drawLabel(ex, ey, `END\nt=${result.timestamps[n-1].toFixed(3)}s\nx=${xs[n-1].toFixed(3)}m\ny=${ys[n-1].toFixed(3)}m`, true);
 
-    // Current frame dot
     const fi = currentFrameIdx;
     if (fi >= 0 && fi < xs.length) {
       const [bx, by] = toCanvas(xs[fi], ys[fi], bounds);
@@ -337,7 +337,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI*2); ctx.fill();
     }
 
-    // Hover tooltip
     if (hoverPoint) {
       const { idx, cx: hx, cy: hy } = hoverPoint;
       ctx.strokeStyle = G; ctx.lineWidth = 2;
@@ -379,7 +378,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
 
   useEffect(() => { drawTrajectory(); }, [drawTrajectory]);
 
-  // Mouse events
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isPanning.current) {
       didDrag.current = true;
@@ -421,7 +419,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     setTimeout(() => { didDrag.current = false; }, 0);
   }, []);
 
-  // Frame data
   const currentAbsFrame = frameStart + currentFrameIdx;
   const currentX    = xs[currentFrameIdx]?.toFixed(3) ?? "—";
   const currentY    = ys[currentFrameIdx]?.toFixed(3) ?? "—";
@@ -430,8 +427,13 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   const currentNetV = netVelocities[currentFrameIdx]?.toFixed(3) ?? "—";
   const detectionSet    = new Set((analysis?.detections ?? []).map(([f]) => f));
   const currentDetected = detectionSet.has(currentAbsFrame);
+  const trajectoryAriaLabel = hoverPoint
+    ? `Trajectory chart, frame ${frameStart + hoverPoint.idx}, ` +
+      `time ${result.timestamps[hoverPoint.idx]?.toFixed(3)} seconds, ` +
+      `x ${xs[hoverPoint.idx]?.toFixed(3)} metres, ` +
+      `y ${ys[hoverPoint.idx]?.toFixed(3)} metres. Click to seek video.`
+    : "Trajectory chart. Hover over a tracked point for frame data and click to seek the video.";
 
-  // CSV export
   function handleExportCSV() {
     const headers = ["frame_index","timestamp_s","x_px","y_px","x_m","y_m","velocity_x_ms","velocity_y_ms","net_velocity_ms","acceleration_x_ms2","acceleration_y_ms2","detection_status"];
     const rows = result.timestamps.map((t, i) => {
@@ -464,7 +466,6 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     a.click(); URL.revokeObjectURL(url);
   }
 
-  // PDF export
   async function handleExportPDF() {
     setExportingPdf(true);
     try {
@@ -497,7 +498,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       sectionTitle("1. Physics Summary");
       [["Estimated Gravity",`${result.estimated_gravity_ms2.toFixed(4)} m/s²`],["Initial Velocity",`${result.initial_velocity_ms.toFixed(4)} m/s`],["Launch Angle",`${result.launch_angle_deg.toFixed(2)} °`],["Maximum Height",`${maxHeight.toFixed(3)} m`],["Horizontal Range",`${horizontalRange.toFixed(3)} m`],["Time of Flight",`${timeOfFlight.toFixed(3)} s`],["Peak Velocity",`${peakVelocity.toFixed(3)} m/s`]].forEach(([l,v],i) => tableRow(l,v,i%2===0));      y += 4;
       sectionTitle("2. Experimental Context");
-      [["Video File",uploadData?.filename??"—"],["Resolution",`${uploadData?.width??"?"}×${uploadData?.height??"?"} @ ${uploadData?.fps??"?"}fps`],["Analysed Frames",`${frameStart} – ${frameEnd}`],["Tracking Mode",result.tracker_mode==="yolo"?"YOLOv8":"HSV Colour"],["Air Resistance",useAirResistance?"Yes":"No"],["Calibration (px/m)",result.px_per_metre.toFixed(2)],...(calibration?[["Cal Pt 1",`(${calibration.x1.toFixed(1)}, ${calibration.y1.toFixed(1)})`],["Cal Pt 2",`(${calibration.x2.toFixed(1)}, ${calibration.y2.toFixed(1)})`],["Cal Distance",`${calibration.real_world_distance_m} m`]]:[]),["App Version",APP_VERSION],["Export Timestamp",new Date().toISOString()]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
+      [["Video File",uploadData?.filename??"—"],["Resolution",`${uploadData?.width??"?"}×${uploadData?.height??"?"} @ ${uploadData?.fps??"?"}fps`],["Analysed Frames",`${frameStart} – ${frameEnd}`],["Tracking Mode",result.tracker_mode==="yolo"?"YOLOv8":"HSV Colour"],["Air Resistance",useAirResistance?"Yes":"No"],["Calibration (px/m)",result.px_per_metre.toFixed(2)],...calibrationRows,["App Version",APP_VERSION],["Export Timestamp",new Date().toISOString()]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
       y += 4;
       sectionTitle("3. Quality Metrics");
       [["Detection Rate",`${analysis?.detection_rate?.toFixed(1)??"?"}%`],["Detected Frames",`${analysis?.detected_frames??"?"} / ${analysis?.total_frames??"?"}`],["Points Used for Fit",String(n)],[`${fitLabel} Fit R²`,r2.toFixed(4)]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
@@ -554,7 +555,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
             border:"1px solid #dbeafe",
             borderRadius:"20px", padding:"clamp(16px,4vw,24px) clamp(18px,4.5vw,26px)",
             boxShadow:"0 10px 30px rgba(37,99,168,0.08)",
-            minHeight:"190px",
+            minHeight:"168px",
           }}>
             <div style={{
               width:"clamp(42px,10vw,50px)", height:"clamp(42px,10vw,50px)", borderRadius:"16px",
@@ -562,7 +563,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
               background:"linear-gradient(145deg, #dbeafe, #eef2ff)",
               color:"#0866e8", fontSize:"clamp(22px,5.5vw,27px)", fontWeight:750,
               fontFamily:"Arial, Helvetica, sans-serif",
-              marginBottom:"16px",
+              marginBottom:"13px",
             }}>{icon}</div>
             <div style={{ fontSize:"clamp(14px,3.6vw,17px)", color:"#111827", fontWeight:650, marginBottom:"16px" }}>{label}</div>
             <div style={{ display:"flex", alignItems:"baseline", gap:"10px", flexWrap:"wrap" }}>
@@ -574,15 +575,15 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
             <div style={{ fontSize:"clamp(14px,3.6vw,17px)", fontWeight:500, color:"#52627c", marginTop:"12px" }}>{unit}</div>
             {ci && (
               <div title={ci} style={{
-                display:"inline-flex", alignItems:"center", gap:"9px", marginTop:"18px", padding:"7px 12px",
-                borderRadius:"12px", background:"#eaf3ff",
-                color:"#536783", fontSize:"12px", fontWeight:600,
+                display:"inline-flex", alignItems:"center", gap:"7px", marginTop:"14px", padding:"6px 10px",
+                borderRadius:"11px", background:"#eaf3ff",
+                color:"#536783", fontSize:"11px", fontWeight:600,
               }}>
                 <span>95% confidence interval</span>
                 <span style={{
-                  width:"16px", height:"16px", border:"1.5px solid #71839e",
+                  width:"14px", height:"14px", border:"1.5px solid #71839e",
                   borderRadius:"50%", display:"inline-flex", alignItems:"center",
-                  justifyContent:"center", fontSize:"10px", fontWeight:800,
+                  justifyContent:"center", fontSize:"9px", fontWeight:800,
                 }}>i</span>
               </div>
             )}
@@ -605,6 +606,17 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
               />
             </>
           )}
+        </div>
+      )}
+
+      {automaticCalibration?.warning && (
+        <div style={{
+          marginBottom:"16px", padding:"13px 16px", borderRadius:"11px",
+          background:"#fffbeb", border:"1px solid #fde68a",
+          color:"#92400e", fontSize:"12px", lineHeight:1.55,
+        }}>
+          <strong>Calibration warning:</strong> {automaticCalibration.warning}
+          {" "}The analysis continued using a robust median ball diameter.
         </div>
       )}
 
@@ -644,7 +656,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         {videoTab === "original" && (
           <div style={{ padding:"14px", borderTop:"1px solid #e5e7eb", background:"#f9fafb" }}>
             <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"4px", marginBottom:"8px" }}>
-              <span style={{ fontSize:"11px", fontFamily:"monospace", color:"#6b7280" }}>frame {currentAbsFrame} / {frameEnd}</span>
+              <span data-testid="current-frame" style={{ fontSize:"11px", fontFamily:"monospace", color:"#6b7280" }}>frame {currentAbsFrame} / {frameEnd}</span>
               <span style={{ fontSize:"11px", color:"#9ca3af" }}>t = {result.timestamps[currentFrameIdx]?.toFixed(3) ?? "—"} s</span>
             </div>
             <div style={{ display:"flex", gap:"6px", alignItems:"center", flexWrap:"wrap", marginBottom:"10px" }}>
@@ -692,6 +704,9 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         </div>
         <canvas
           ref={trajectoryCanvasRef}
+          data-testid="trajectory-canvas"
+          role="img"
+          aria-label={trajectoryAriaLabel}
           width={W} height={H}
           style={{ width:"100%", borderRadius:"8px", border:"1px solid #f3f4f6", cursor: hoverPoint?"pointer":panning?"grabbing":"crosshair" }}
           onMouseMove={handleCanvasMouseMove}
@@ -835,7 +850,12 @@ function LegendLine({ color, label, dashed }: { color: string; label: string; da
 
 function Toggle({ label, value, onChange, disabled }: { label: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <button onClick={() => !disabled && onChange(!value)} style={{ display:"flex", alignItems:"center", gap:"8px",
+    <button
+      onClick={() => !disabled && onChange(!value)}
+      aria-label={label}
+      aria-pressed={value}
+      disabled={disabled}
+      style={{ display:"flex", alignItems:"center", gap:"8px",
       background: value ? GLIGHT : "#f9fafb",
       border: `1px solid ${value ? GBORDER : "#e5e7eb"}`,
       borderRadius:"8px", padding:"7px 14px", cursor:disabled?"not-allowed":"pointer", opacity:disabled?0.4:1 }}>
