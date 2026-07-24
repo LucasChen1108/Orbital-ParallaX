@@ -93,6 +93,17 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     }
   }
   const fitLabel = result.drag_coefficient != null ? "Drag Model" : "Parabolic";
+  const confidenceInterval = (key: string, digits: number, unit: string) => {
+    const interval = result.confidence_intervals?.[key];
+    if (!interval) return undefined;
+    return `95% CI ${interval.lower.toFixed(digits)}–${interval.upper.toFixed(digits)} ${unit}`;
+  };
+  const uncertainty = (key: string, digits: number) => {
+    const interval = result.confidence_intervals?.[key];
+    if (!interval) return undefined;
+    const halfWidth = (interval.upper - interval.lower) / 2;
+    return `± ${halfWidth.toFixed(digits)}`;
+  };
 
   // Video sync
   // Video sync
@@ -525,25 +536,53 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   }
 
   const metrics = [
-    { label: "Gravity estimate", value: result.estimated_gravity_ms2.toFixed(2), unit: "m/s²", good: Math.abs(result.estimated_gravity_ms2-9.81)<1.0 },
-    { label: "Initial velocity",  value: result.initial_velocity_ms.toFixed(2),  unit: "m/s",  good: true },
-    { label: "Launch angle",      value: result.launch_angle_deg.toFixed(1),      unit: "°",    good: true },
-    { label: "Frames analysed",   value: String(n),                               unit: "frames",good: true },
+    { icon: "g", label: "Gravity estimate", value: result.estimated_gravity_ms2.toFixed(2), error: uncertainty("estimated_gravity_ms2", 2), unit: "m/s²", ci: confidenceInterval("estimated_gravity_ms2", 2, "m/s²") },
+    { icon: "v", label: "Initial velocity", value: result.initial_velocity_ms.toFixed(2), error: uncertainty("initial_velocity_ms", 2), unit: "m/s", ci: confidenceInterval("initial_velocity_ms", 2, "m/s") },
+    { icon: "θ", label: "Launch angle", value: result.launch_angle_deg.toFixed(1), error: uncertainty("launch_angle_deg", 1), unit: "°", ci: confidenceInterval("launch_angle_deg", 1, "°") },
+    { icon: "▦", label: "Frames analysed", value: String(n), error: undefined, unit: "frames", ci: undefined },
   ];
   return (
     <div>
       {/* Metric cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:"12px", marginBottom:"20px" }}>
-        {metrics.map(({ label, value, unit, good }) => (
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:"16px", marginBottom:"24px" }}>
+        {metrics.map(({ icon, label, value, error, unit, ci }) => (
           <div key={label} style={{
-            background:"#fff", border:"1px solid #e5e7eb",
-            borderRadius:"12px", padding:"16px 20px",
-            boxShadow:"0 1px 3px rgba(0,0,0,0.06)",
+            background:"linear-gradient(145deg, #ffffff 0%, #fbfdff 100%)",
+            border:"1px solid #dbeafe",
+            borderRadius:"20px", padding:"24px 26px",
+            boxShadow:"0 10px 30px rgba(37,99,168,0.08)",
+            minHeight:"190px",
           }}>
-            <div style={{ fontSize:"11px", color:"#6b7280", marginBottom:"8px" }}>{label}</div>
-            <div style={{ fontSize:"24px", fontWeight:700, fontFamily:"monospace", color: good ? G : "#2cc121" }}>
-              {value}<span style={{ fontSize:"13px", fontWeight:400, color:"#9ca3af", marginLeft:"4px" }}>{unit}</span>
+            <div style={{
+              width:"50px", height:"50px", borderRadius:"16px",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              background:"linear-gradient(145deg, #dbeafe, #eef2ff)",
+              color:"#0866e8", fontSize:"27px", fontWeight:750,
+              fontFamily:"Arial, Helvetica, sans-serif",
+              marginBottom:"16px",
+            }}>{icon}</div>
+            <div style={{ fontSize:"17px", color:"#111827", fontWeight:650, marginBottom:"16px" }}>{label}</div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:"12px", whiteSpace:"nowrap" }}>
+              <span style={{ fontSize:"40px", lineHeight:1, fontWeight:750, fontFamily:"Arial, Helvetica, sans-serif", color:"#0866e8", letterSpacing:"-0.03em" }}>
+                {value}
+              </span>
+              {error && <span style={{ fontSize:"20px", fontWeight:500, color:"#5f6f89" }}>{error}</span>}
             </div>
+            <div style={{ fontSize:"17px", fontWeight:500, color:"#52627c", marginTop:"12px" }}>{unit}</div>
+            {ci && (
+              <div title={ci} style={{
+                display:"inline-flex", alignItems:"center", gap:"9px", marginTop:"18px", padding:"7px 12px",
+                borderRadius:"12px", background:"#eaf3ff",
+                color:"#536783", fontSize:"12px", fontWeight:600,
+              }}>
+                <span>95% confidence interval</span>
+                <span style={{
+                  width:"16px", height:"16px", border:"1.5px solid #71839e",
+                  borderRadius:"50%", display:"inline-flex", alignItems:"center",
+                  justifyContent:"center", fontSize:"10px", fontWeight:800,
+                }}>i</span>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -553,6 +592,16 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         <div style={{ display:"flex", gap:"10px", marginBottom:"16px", flexWrap:"wrap" }}>
           <QBadge good={analysis.detection_rate>=80} label={`Detection rate: ${analysis.detection_rate.toFixed(1)}% (${analysis.detected_frames}/${analysis.total_frames} frames)`} />
           <QBadge good={r2>=0.98} label={`${fitLabel} fit R² = ${r2.toFixed(4)}`} />
+          {result.fit_quality && (
+            <>
+              <QBadge good={result.fit_quality.converged} label={result.fit_quality.converged ? "Bounded fit converged" : "Fit did not converge"} />
+              <QBadge good={result.fit_quality.rmse_m <= 0.05} label={`Fit RMSE = ${result.fit_quality.rmse_m.toFixed(4)} m`} />
+              <QBadge
+                good={result.fit_quality.successful_bootstraps >= Math.max(10, result.fit_quality.bootstrap_samples * 0.9)}
+                label={`Bootstrap: ${result.fit_quality.successful_bootstraps}/${result.fit_quality.bootstrap_samples}`}
+              />
+            </>
+          )}
         </div>
       )}
 

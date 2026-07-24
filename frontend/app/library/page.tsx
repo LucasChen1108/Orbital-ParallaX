@@ -61,7 +61,7 @@ export default function LibraryPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#f8f9fa", color: "#111827", fontFamily: "system-ui, sans-serif" }}>
       <Navbar />
-      <main style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 2rem" }}>
+      <main style={{ maxWidth: result ? "1440px" : "900px", margin: "0 auto", padding: "40px 2rem", transition: "max-width 0.25s ease" }}>
         {!result ? (
           <>
             <div style={{ marginBottom: "28px" }}>

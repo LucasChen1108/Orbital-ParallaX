@@ -54,6 +54,23 @@ class PredictedTrajectory(BaseModel):
     y_positions_m: list[float]
 
 
+class ConfidenceInterval(BaseModel):
+    lower: float
+    upper: float
+
+
+class FitQuality(BaseModel):
+    converged: bool
+    message: str
+    rmse_m: float
+    r_squared: float
+    cost: float
+    optimality: float
+    function_evaluations: int
+    bootstrap_samples: int
+    successful_bootstraps: int
+
+
 class SandboxRequest(BaseModel):
     v0: float = Field(..., ge=0, le=100, description="Initial speed, m/s")
     angle_deg: float = Field(..., ge=-180, le=180)
@@ -84,6 +101,8 @@ class PhysicsResult(BaseModel):
     drag_coefficient: Optional[float] = None
     tracker_mode: Optional[str] = None
     predicted_trajectory: Optional[PredictedTrajectory] = None
+    confidence_intervals: Optional[dict[str, ConfidenceInterval]] = None
+    fit_quality: Optional[FitQuality] = None
 
 
 class AnalysisResponse(BaseModel):

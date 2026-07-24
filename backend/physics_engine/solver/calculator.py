@@ -6,7 +6,10 @@ Stateless functions, easy to unit test.
 """
 
 import math
+import os
 import numpy as np
+from scipy.integrate import solve_ivp
+from scipy.optimize import least_squares
 from scipy.signal import savgol_filter
 
 
@@ -134,20 +137,23 @@ def compute_physics_with_drag(
     detections: list[tuple[int, float, float]],
     fps: float,
     px_per_metre: float,
+    bootstrap_samples: int | None = None,
+    random_seed: int | None = 42,
 ) -> dict:
     """
     Same as compute_physics but fits a drag model:
-        dvx/dt = -b * vx
-        dvy/dt = -g - b * vy
-    Uses scipy.optimize.minimize to find best-fit g and b.
+        dvx/dt = -b * |v| * vx
+        dvy/dt = -g - b * |v| * vy
+    Uses bounded nonlinear least squares and solve_ivp, then estimates
+    parameter uncertainty with a residual bootstrap.
     """
-    from scipy.integrate import odeint
-    from scipy.optimize import minimize
-
-    if len(detections) < 5:
+    if len(detections) < 8:
         raise ValueError(
-            f"Only {len(detections)} frames detected — need at least 5."
+            f"Only {len(detections)} frames detected — need at least 8 "
+            "for a stable drag fit."
         )
+    if fps <= 0 or px_per_metre <= 0:
+        raise ValueError("fps and px_per_metre must be positive.")
 
     frames = np.array([d[0] for d in detections], dtype=float)
     px_x   = np.array([d[1] for d in detections], dtype=float)
@@ -156,6 +162,8 @@ def compute_physics_with_drag(
     x_m = px_x / px_per_metre
     y_m = -(px_y / px_per_metre)
     timestamps = (frames - frames[0]) / fps
+    if np.any(np.diff(timestamps) <= 0):
+        raise ValueError("Detection frame indices must be strictly increasing.")
 
     # Smooth first (same as before)
     window   = _safe_window(len(x_m))
@@ -167,58 +175,49 @@ def compute_physics_with_drag(
     vx0_guess = (x_smooth[1] - x_smooth[0]) / dt
     vy0_guess = (y_smooth[1] - y_smooth[0]) / dt
 
-    def ode(state, t, g, b):
-        _, _, vx, vy = state
-        speed = np.sqrt(vx**2 + vy**2)
-        return [vx, vy, -b * speed * vx, -g - b * speed * vy]
-
-    def simulate(params):
-        g, b, x0, y0, vx0, vy0 = params
-        if g < 0 or b < 0:
-            return np.full(len(timestamps) * 2, 1e6)
-        state0 = [x0, y0, vx0, vy0]
-        try:
-            sol = odeint(ode, state0, timestamps, args=(g, b))
-            return np.concatenate([sol[:, 0], sol[:, 1]])
-        except Exception:
-            return np.full(len(timestamps) * 2, 1e6)
-
-    observed = np.concatenate([x_smooth, y_smooth])
-    
-    def residuals(params):
-        g, b, vx0, vy0 = params
-        state0 = [x0_fixed, y0_fixed, vx0, vy0]
-        try:
-            sol = odeint(ode, state0, timestamps, args=(g, b))
-            predicted = np.concatenate([sol[:, 0], sol[:, 1]])
-            return np.sum((predicted - observed) ** 2)
-        except Exception:
-            return 1e6
-
     x0_fixed = float(x_smooth[0])
     y0_fixed = float(y_smooth[0])
+    observed = np.column_stack([x_smooth, y_smooth])
+    initial_guess = np.array([9.81, 0.025, vx0_guess, vy0_guess])
+    lower_bounds = np.array([5.0, 0.0, -100.0, -100.0])
+    upper_bounds = np.array([15.0, 1.0, 100.0, 100.0])
 
-    x0_guess = [9.81, 0.025, vx0_guess, vy0_guess]
-    bounds = [(5, 15), (0.01, 0.1), (None, None), (None, None)]
+    fit = _fit_drag_parameters(
+        timestamps, observed, x0_fixed, y0_fixed, initial_guess,
+        lower_bounds, upper_bounds,
+    )
+    g_fit, b_fit, vx0_fit, vy0_fit = fit.x
 
-    res = minimize(residuals, x0_guess, method="Nelder-Mead", bounds=bounds,
-            options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 5000})
-
-    g_fit, b_fit, vx0_fit, vy0_fit = res.x
-
-    # Reconstruct full trajectory from fitted params
-    sol = odeint(ode, [x0_fixed, y0_fixed, vx0_fit, vy0_fit], timestamps, args=(g_fit, b_fit))
-    x_fit = sol[:, 0]
-    y_fit = sol[:, 1]
-    vx_fit = sol[:, 2]
-    vy_fit = sol[:, 3]
-
-    dt_arr = np.gradient(timestamps)
+    states = _solve_drag_trajectory(
+        timestamps, x0_fixed, y0_fixed, g_fit, b_fit, vx0_fit, vy0_fit
+    )
+    x_fit, y_fit, vx_fit, vy_fit = states
     ax_fit = np.gradient(vx_fit, timestamps)
     ay_fit = np.gradient(vy_fit, timestamps)
 
     initial_speed    = float(math.sqrt(vx0_fit**2 + vy0_fit**2))
     launch_angle_deg = float(math.degrees(math.atan2(vy0_fit, vx0_fit)))
+    residual_xy = observed - np.column_stack([x_fit, y_fit])
+    rmse = float(np.sqrt(np.mean(np.sum(residual_xy**2, axis=1))))
+    ss_res = float(np.sum(residual_xy**2))
+    centred = observed - np.mean(observed, axis=0)
+    ss_tot = float(np.sum(centred**2))
+    r_squared = float(1.0 - ss_res / ss_tot) if ss_tot > 1e-15 else 1.0
+
+    if bootstrap_samples is None:
+        bootstrap_samples = int(os.environ.get("ARCLAB_BOOTSTRAP_SAMPLES", "500"))
+    confidence_intervals, successful_bootstraps = _bootstrap_drag_fit(
+        timestamps=timestamps,
+        fitted_xy=np.column_stack([x_fit, y_fit]),
+        residual_xy=residual_xy,
+        x0=x0_fixed,
+        y0=y0_fixed,
+        initial_guess=fit.x,
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds,
+        samples=max(0, bootstrap_samples),
+        random_seed=random_seed,
+    )
 
     # Ideal (no-drag) ghost using the fitted launch conditions and the fitted
     # gravity g_fit (matched vertical scale), extended ~1.5x so it visibly
@@ -244,8 +243,122 @@ def compute_physics_with_drag(
         "launch_angle_deg":      round(launch_angle_deg, 2),
         "px_per_metre":          round(px_per_metre, 4),
         "drag_coefficient":      round(float(b_fit), 4),
+        "confidence_intervals":  confidence_intervals,
+        "fit_quality": {
+            "converged": bool(fit.success),
+            "message": str(fit.message),
+            "rmse_m": round(rmse, 6),
+            "r_squared": round(r_squared, 6),
+            "cost": round(float(fit.cost), 8),
+            "optimality": round(float(fit.optimality), 8),
+            "function_evaluations": int(fit.nfev),
+            "bootstrap_samples": int(bootstrap_samples),
+            "successful_bootstraps": successful_bootstraps,
+        },
         "predicted_trajectory":  predicted,
     }
+
+
+def _drag_ode(_t, state, g, drag_coeff):
+    _x, _y, vx, vy = state
+    speed = math.hypot(vx, vy)
+    return [vx, vy, -drag_coeff * speed * vx, -g - drag_coeff * speed * vy]
+
+
+def _solve_drag_trajectory(timestamps, x0, y0, g, drag_coeff, vx0, vy0):
+    sol = solve_ivp(
+        _drag_ode,
+        (float(timestamps[0]), float(timestamps[-1])),
+        [x0, y0, vx0, vy0],
+        t_eval=timestamps,
+        args=(g, drag_coeff),
+        method="RK45",
+        rtol=1e-7,
+        atol=1e-9,
+    )
+    if not sol.success or sol.y.shape[1] != len(timestamps):
+        raise ValueError(f"Trajectory solver failed: {sol.message}")
+    return sol.y
+
+
+def _fit_drag_parameters(
+    timestamps, observed_xy, x0, y0, initial_guess,
+    lower_bounds, upper_bounds,
+):
+    def residual_vector(params):
+        g, drag_coeff, vx0, vy0 = params
+        try:
+            states = _solve_drag_trajectory(
+                timestamps, x0, y0, g, drag_coeff, vx0, vy0
+            )
+            return (states[:2].T - observed_xy).ravel()
+        except (ValueError, FloatingPointError):
+            return np.full(observed_xy.size, 1e6)
+
+    result = least_squares(
+        residual_vector,
+        np.clip(initial_guess, lower_bounds, upper_bounds),
+        bounds=(lower_bounds, upper_bounds),
+        method="trf",
+        x_scale="jac",
+        max_nfev=2000,
+        ftol=1e-10,
+        xtol=1e-10,
+        gtol=1e-10,
+    )
+    if not result.success or not np.all(np.isfinite(result.x)):
+        raise ValueError(f"Drag fit did not converge: {result.message}")
+    return result
+
+
+def _bootstrap_drag_fit(
+    timestamps, fitted_xy, residual_xy, x0, y0, initial_guess,
+    lower_bounds, upper_bounds, samples, random_seed,
+):
+    parameter_names = (
+        "estimated_gravity_ms2",
+        "drag_coefficient",
+        "initial_velocity_ms",
+        "launch_angle_deg",
+    )
+    if samples == 0:
+        return {}, 0
+
+    rng = np.random.default_rng(random_seed)
+    centred_residuals = residual_xy - np.mean(residual_xy, axis=0)
+    estimates = []
+    for _ in range(samples):
+        indices = rng.integers(0, len(centred_residuals), len(centred_residuals))
+        boot_observed = fitted_xy + centred_residuals[indices]
+        try:
+            boot_fit = _fit_drag_parameters(
+                timestamps, boot_observed, x0, y0, initial_guess,
+                lower_bounds, upper_bounds,
+            )
+        except ValueError:
+            continue
+        g, drag_coeff, vx0, vy0 = boot_fit.x
+        estimates.append([
+            g,
+            drag_coeff,
+            math.hypot(vx0, vy0),
+            math.degrees(math.atan2(vy0, vx0)),
+        ])
+
+    minimum_successes = max(10, int(samples * 0.5))
+    if len(estimates) < minimum_successes:
+        raise ValueError(
+            f"Bootstrap uncertainty estimation failed: only {len(estimates)} "
+            f"of {samples} fits converged."
+        )
+    values = np.asarray(estimates)
+    lower = np.percentile(values, 2.5, axis=0)
+    upper = np.percentile(values, 97.5, axis=0)
+    intervals = {
+        name: {"lower": round(float(lower[i]), 6), "upper": round(float(upper[i]), 6)}
+        for i, name in enumerate(parameter_names)
+    }
+    return intervals, len(estimates)
 
 
 # ── Ghost trajectory — Feature 5 ─────────────────────────────────────────────
