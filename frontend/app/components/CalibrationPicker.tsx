@@ -28,9 +28,9 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
 
     points.forEach((p, i) => {
       ctx.fillStyle = G;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 11px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(String(i + 1), p.x, p.y);
     });
@@ -76,11 +76,11 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
   return (
     <div>
       <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>
-        Click 2 points on the frame whose real-world distance you know (e.g. a ruler, a door, a metre stick).
+        Tap 2 points on the frame whose real-world distance you know (e.g. a ruler, a door, a metre stick).
       </p>
 
       {/* Progress */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
         {[1, 2].map(n => (
           <div key={n} style={{
             display: "flex", alignItems: "center", gap: "6px",
@@ -100,7 +100,7 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
         ))}
         {points.length < 2 && (
           <div style={{ fontSize: "12px", color: "#9ca3af", alignSelf: "center" }}>
-            — click {2 - points.length} more point{2 - points.length > 1 ? "s" : ""}
+            — tap {2 - points.length} more point{2 - points.length > 1 ? "s" : ""}
           </div>
         )}
       </div>
@@ -124,6 +124,7 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
           style={{
             position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
             cursor: points.length < 2 && !done ? "crosshair" : "default",
+            touchAction: "manipulation",
           }}
         />
       </div>
@@ -135,27 +136,28 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
             Real-world distance between the two points (metres)
           </label>
           <input
-            type="number" min="0.01" step="0.01" value={distance}
+            type="number" inputMode="decimal" min="0.01" step="0.01" value={distance}
             onChange={e => setDistance(e.target.value)}
             placeholder="e.g. 1.0"
             style={{
               background: "#fff", border: "1px solid #d1d5db",
-              borderRadius: "8px", padding: "10px 14px", color: "#111827",
-              fontSize: "14px", width: "160px", outline: "none",
+              borderRadius: "8px", padding: "12px 14px", color: "#111827",
+              fontSize: "16px", width: "180px", outline: "none",
             }}
           />
         </div>
 
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
           <button
             onClick={handleConfirm}
             disabled={points.length < 2 || !distance || done}
             style={{
               background: points.length < 2 || !distance || done ? "#bfdbfe" : G,
-              color: "#fff", border: "none", padding: "10px 24px",
+              color: "#fff", border: "none", padding: "12px 24px",
               borderRadius: "10px", fontSize: "14px", fontWeight: 600,
               cursor: points.length < 2 || !distance || done ? "not-allowed" : "pointer",
               boxShadow: points.length < 2 || !distance || done ? "none" : "0 1px 3px rgba(37,99,168,0.3)",
+              minHeight: "44px",
             }}
           >
             {done ? "✓ Calibration set" : "Confirm calibration →"}
@@ -166,8 +168,9 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
               onClick={() => setPoints([])}
               style={{
                 background: "#fff", border: "1px solid #d1d5db",
-                color: "#6b7280", padding: "10px 16px",
+                color: "#6b7280", padding: "12px 16px",
                 borderRadius: "10px", fontSize: "13px", cursor: "pointer",
+                minHeight: "44px",
               }}
             >
               Reset points
@@ -180,7 +183,7 @@ export default function CalibrationPicker({ videoId, frameIndex, videoWidth, vid
             display: "flex", alignItems: "center", gap: "10px",
             background: "#eff6ff", border: "1px solid #bfdbfe",
             borderRadius: "10px", padding: "12px 16px", fontSize: "13px",
-            color: G, fontWeight: 500,
+            color: G, fontWeight: 500, flexWrap: "wrap",
           }}>
             ✓ Calibration confirmed — {distance}m between points
           </div>

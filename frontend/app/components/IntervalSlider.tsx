@@ -25,7 +25,6 @@ export default function IntervalSlider({
   const [currentFrame, setCurrentFrame] = useState(0);
   const toSec = (f: number) => (f / fps).toFixed(2);
 
-  // Sync video time → currentFrame
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -83,6 +82,7 @@ export default function IntervalSlider({
           {/* Frame info bar */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
+            flexWrap: "wrap", gap: "10px",
             padding: "10px 16px", background: "#f9fafb", borderTop: "1px solid #e5e7eb",
           }}>
             <div style={{ fontSize: "12px", fontFamily: "monospace", color: "#6b7280" }}>
@@ -94,18 +94,20 @@ export default function IntervalSlider({
                 ({(currentFrame / fps).toFixed(2)}s)
               </span>
             </div>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <button onClick={setStartHere} style={{
                 background: GLIGHT, border: `1px solid ${GBORDER}`,
-                color: G, borderRadius: "7px", padding: "5px 12px",
+                color: G, borderRadius: "7px", padding: "9px 14px",
                 fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                minHeight: "38px",
               }}>
                 ← Set as start
               </button>
               <button onClick={setEndHere} style={{
                 background: GLIGHT, border: `1px solid ${GBORDER}`,
-                color: G, borderRadius: "7px", padding: "5px 12px",
+                color: G, borderRadius: "7px", padding: "9px 14px",
                 fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                minHeight: "38px",
               }}>
                 Set as end →
               </button>
@@ -128,7 +130,6 @@ export default function IntervalSlider({
             width: `${((endFrame - startFrame) / (totalFrames - 1)) * 100}%`,
             height: "100%", background: G, borderRadius: "3px",
           }} />
-          {/* Start handle */}
           <div style={{
             position: "absolute",
             left: `${(startFrame / (totalFrames - 1)) * 100}%`,
@@ -137,7 +138,6 @@ export default function IntervalSlider({
             background: G, border: "2px solid #fff",
             boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
           }} />
-          {/* End handle */}
           <div style={{
             position: "absolute",
             left: `${(endFrame / (totalFrames - 1)) * 100}%`,
@@ -160,7 +160,7 @@ export default function IntervalSlider({
           <input
             type="range" min={0} max={totalFrames - 1} value={startFrame}
             onChange={e => handleStartChange(Number(e.target.value))}
-            style={{ width: "100%", accentColor: G }}
+            style={{ width: "100%", accentColor: G, height: "28px" }}
           />
         </div>
 
@@ -176,10 +176,10 @@ export default function IntervalSlider({
           <input
             type="range" min={0} max={totalFrames - 1} value={endFrame}
             onChange={e => handleEndChange(Number(e.target.value))}
-            style={{ width: "100%", accentColor: G }}
+            style={{ width: "100%", accentColor: G, height: "28px" }}
           />
         </div>
-        
+
         {/* Summary */}
         <div style={{
           display: "flex", gap: "16px", flexWrap: "wrap",

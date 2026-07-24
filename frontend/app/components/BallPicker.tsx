@@ -29,15 +29,15 @@ export default function BallPicker({ videoId, frameIndex, videoWidth, videoHeigh
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = G;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(clicked.x, clicked.y, 14, 0, Math.PI * 2);
+    ctx.arc(clicked.x, clicked.y, 16, 0, Math.PI * 2);
     ctx.stroke();
     ctx.strokeStyle = "#f59e0b";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(clicked.x - 20, clicked.y); ctx.lineTo(clicked.x + 20, clicked.y);
-    ctx.moveTo(clicked.x, clicked.y - 20); ctx.lineTo(clicked.x, clicked.y + 20);
+    ctx.moveTo(clicked.x - 22, clicked.y); ctx.lineTo(clicked.x + 22, clicked.y);
+    ctx.moveTo(clicked.x, clicked.y - 22); ctx.lineTo(clicked.x, clicked.y + 22);
     ctx.stroke();
   }, [clicked]);
 
@@ -68,7 +68,7 @@ export default function BallPicker({ videoId, frameIndex, videoWidth, videoHeigh
   return (
     <div>
       <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>
-        Click directly on the ball in the frame. We sample its colour to track it through the clip.
+        Tap directly on the ball in the frame. We sample its colour to track it through the clip.
       </p>
 
       <div style={{
@@ -87,7 +87,10 @@ export default function BallPicker({ videoId, frameIndex, videoWidth, videoHeigh
               width={videoWidth}
               height={videoHeight}
               onClick={handleCanvasClick}
-              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+              style={{
+                position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                touchAction: "manipulation",
+              }}
             />
           </>
         ) : (
@@ -111,7 +114,7 @@ export default function BallPicker({ videoId, frameIndex, videoWidth, videoHeigh
           <div style={{
             display: "flex", alignItems: "center", gap: "12px",
             background: "#eff6ff", border: "1px solid #bfdbfe",
-            borderRadius: "10px", padding: "12px 16px",
+            borderRadius: "10px", padding: "12px 16px", flexWrap: "wrap",
           }}>
             <span style={{ fontSize: "16px" }}>✓</span>
             <div>
