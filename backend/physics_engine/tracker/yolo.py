@@ -44,12 +44,29 @@ def track_yolo(
     and uses the bbox centre. Frames with no detection are skipped — same
     contract as the HSV tracker: [(frame_index, cx_px, cy_px), ...].
     """
+    detailed = track_yolo_detailed(video_path, start_frame, end_frame)
+    return [
+        (item["frame_index"], item["cx"], item["cy"])
+        for item in detailed
+    ]
+
+
+def track_yolo_detailed(
+    video_path: Path,
+    start_frame: int,
+    end_frame: int,
+) -> list[dict]:
+    """Return centres plus bounding-box dimensions and confidence.
+
+    The richer result is used by ball-diameter calibration. ``track_yolo``
+    keeps the original tuple contract for the rest of the physics pipeline.
+    """
     model = _get_model()
 
     cap = cv2.VideoCapture(str(video_path))
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
-    detections: list[tuple[int, float, float]] = []
+    detections: list[dict] = []
 
     for frame_idx in range(start_frame, end_frame + 1):
         ret, frame = cap.read()
@@ -72,7 +89,20 @@ def track_yolo(
 
         cx = (x1 + x2) / 2.0
         cy = (y1 + y2) / 2.0
-        detections.append((frame_idx, cx, cy))
+        detections.append({
+            "frame_index": frame_idx,
+            "cx": float(cx),
+            "cy": float(cy),
+            "x1": float(x1),
+            "y1": float(y1),
+            "x2": float(x2),
+            "y2": float(y2),
+            "width_px": float(x2 - x1),
+            "height_px": float(y2 - y1),
+            "confidence": float(boxes.conf[best_idx]),
+            "frame_width": int(frame.shape[1]),
+            "frame_height": int(frame.shape[0]),
+        })
 
     cap.release()
     return detections

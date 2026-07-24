@@ -93,6 +93,21 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
     }
   }
   const fitLabel = result.drag_coefficient != null ? "Drag Model" : "Parabolic";
+  const automaticCalibration = calibration?.mode === "ball_diameter" ? calibration : null;
+  const calibrationRows: string[][] = !calibration ? [] :
+    calibration.mode === "ball_diameter"
+      ? [
+          ["Calibration Method", "Automatic — Ball diameter"],
+          ["Ball Diameter", `${(calibration.ball_diameter_m * 100).toFixed(2)} cm`],
+          ["Diameter Variation", `${calibration.variation_cv_pct.toFixed(1)}%`],
+          ["Calibration Quality", calibration.quality],
+        ]
+      : [
+          ["Calibration Method", "Manual — Known distance"],
+          ["Cal Pt 1", `(${calibration.x1.toFixed(1)}, ${calibration.y1.toFixed(1)})`],
+          ["Cal Pt 2", `(${calibration.x2.toFixed(1)}, ${calibration.y2.toFixed(1)})`],
+          ["Cal Distance", `${calibration.real_world_distance_m} m`],
+        ];
   const confidenceInterval = (key: string, digits: number, unit: string) => {
     const interval = result.confidence_intervals?.[key];
     if (!interval) return undefined;
@@ -130,7 +145,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   useEffect(() => {                                            
     const activeVideo = videoTab === "original" ? videoRef.current : overlayVideoRef.current;  
     if (activeVideo) activeVideo.currentTime = (frameStart + currentFrameIdx) / fps;  
-  }, [videoTab]); 
+  }, [videoTab, currentFrameIdx, frameStart, fps]);
 
   // Wheel zoom
   useEffect(() => {
@@ -494,7 +509,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
       sectionTitle("1. Physics Summary");
       [["Estimated Gravity",`${result.estimated_gravity_ms2.toFixed(4)} m/s²`],["Initial Velocity",`${result.initial_velocity_ms.toFixed(4)} m/s`],["Launch Angle",`${result.launch_angle_deg.toFixed(2)} °`],["Maximum Height",`${maxHeight.toFixed(3)} m`],["Horizontal Range",`${horizontalRange.toFixed(3)} m`],["Time of Flight",`${timeOfFlight.toFixed(3)} s`],["Peak Velocity",`${peakVelocity.toFixed(3)} m/s`]].forEach(([l,v],i) => tableRow(l,v,i%2===0));      y += 4;
       sectionTitle("2. Experimental Context");
-      [["Video File",uploadData?.filename??"—"],["Resolution",`${uploadData?.width??"?"}×${uploadData?.height??"?"} @ ${uploadData?.fps??"?"}fps`],["Analysed Frames",`${frameStart} – ${frameEnd}`],["Tracking Mode",result.tracker_mode==="yolo"?"YOLOv8":"HSV Colour"],["Air Resistance",useAirResistance?"Yes":"No"],["Calibration (px/m)",result.px_per_metre.toFixed(2)],...(calibration?[["Cal Pt 1",`(${calibration.x1.toFixed(1)}, ${calibration.y1.toFixed(1)})`],["Cal Pt 2",`(${calibration.x2.toFixed(1)}, ${calibration.y2.toFixed(1)})`],["Cal Distance",`${calibration.real_world_distance_m} m`]]:[]),["App Version",APP_VERSION],["Export Timestamp",new Date().toISOString()]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
+      [["Video File",uploadData?.filename??"—"],["Resolution",`${uploadData?.width??"?"}×${uploadData?.height??"?"} @ ${uploadData?.fps??"?"}fps`],["Analysed Frames",`${frameStart} – ${frameEnd}`],["Tracking Mode",result.tracker_mode==="yolo"?"YOLOv8":"HSV Colour"],["Air Resistance",useAirResistance?"Yes":"No"],["Calibration (px/m)",result.px_per_metre.toFixed(2)],...calibrationRows,["App Version",APP_VERSION],["Export Timestamp",new Date().toISOString()]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
       y += 4;
       sectionTitle("3. Quality Metrics");
       [["Detection Rate",`${analysis?.detection_rate?.toFixed(1)??"?"}%`],["Detected Frames",`${analysis?.detected_frames??"?"} / ${analysis?.total_frames??"?"}`],["Points Used for Fit",String(n)],[`${fitLabel} Fit R²`,r2.toFixed(4)]].forEach(([l,v],i) => tableRow(l,v,i%2===0));
@@ -549,37 +564,37 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
           <div key={label} style={{
             background:"linear-gradient(145deg, #ffffff 0%, #fbfdff 100%)",
             border:"1px solid #dbeafe",
-            borderRadius:"20px", padding:"24px 26px",
+            borderRadius:"18px", padding:"20px 22px",
             boxShadow:"0 10px 30px rgba(37,99,168,0.08)",
-            minHeight:"190px",
+            minHeight:"168px",
           }}>
             <div style={{
-              width:"50px", height:"50px", borderRadius:"16px",
+              width:"42px", height:"42px", borderRadius:"14px",
               display:"flex", alignItems:"center", justifyContent:"center",
               background:"linear-gradient(145deg, #dbeafe, #eef2ff)",
-              color:"#0866e8", fontSize:"27px", fontWeight:750,
+              color:"#0866e8", fontSize:"23px", fontWeight:750,
               fontFamily:"Arial, Helvetica, sans-serif",
-              marginBottom:"16px",
+              marginBottom:"13px",
             }}>{icon}</div>
-            <div style={{ fontSize:"17px", color:"#111827", fontWeight:650, marginBottom:"16px" }}>{label}</div>
-            <div style={{ display:"flex", alignItems:"baseline", gap:"12px", whiteSpace:"nowrap" }}>
-              <span style={{ fontSize:"40px", lineHeight:1, fontWeight:750, fontFamily:"Arial, Helvetica, sans-serif", color:"#0866e8", letterSpacing:"-0.03em" }}>
+            <div style={{ fontSize:"15px", color:"#111827", fontWeight:650, marginBottom:"13px" }}>{label}</div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:"10px", whiteSpace:"nowrap" }}>
+              <span style={{ fontSize:"34px", lineHeight:1, fontWeight:750, fontFamily:"Arial, Helvetica, sans-serif", color:"#0866e8", letterSpacing:"-0.03em" }}>
                 {value}
               </span>
-              {error && <span style={{ fontSize:"20px", fontWeight:500, color:"#5f6f89" }}>{error}</span>}
+              {error && <span style={{ fontSize:"17px", fontWeight:500, color:"#5f6f89" }}>{error}</span>}
             </div>
-            <div style={{ fontSize:"17px", fontWeight:500, color:"#52627c", marginTop:"12px" }}>{unit}</div>
+            <div style={{ fontSize:"15px", fontWeight:500, color:"#52627c", marginTop:"9px" }}>{unit}</div>
             {ci && (
               <div title={ci} style={{
-                display:"inline-flex", alignItems:"center", gap:"9px", marginTop:"18px", padding:"7px 12px",
-                borderRadius:"12px", background:"#eaf3ff",
-                color:"#536783", fontSize:"12px", fontWeight:600,
+                display:"inline-flex", alignItems:"center", gap:"7px", marginTop:"14px", padding:"6px 10px",
+                borderRadius:"11px", background:"#eaf3ff",
+                color:"#536783", fontSize:"11px", fontWeight:600,
               }}>
                 <span>95% confidence interval</span>
                 <span style={{
-                  width:"16px", height:"16px", border:"1.5px solid #71839e",
+                  width:"14px", height:"14px", border:"1.5px solid #71839e",
                   borderRadius:"50%", display:"inline-flex", alignItems:"center",
-                  justifyContent:"center", fontSize:"10px", fontWeight:800,
+                  justifyContent:"center", fontSize:"9px", fontWeight:800,
                 }}>i</span>
               </div>
             )}
@@ -602,6 +617,17 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
               />
             </>
           )}
+        </div>
+      )}
+
+      {automaticCalibration?.warning && (
+        <div style={{
+          marginBottom:"16px", padding:"13px 16px", borderRadius:"11px",
+          background:"#fffbeb", border:"1px solid #fde68a",
+          color:"#92400e", fontSize:"12px", lineHeight:1.55,
+        }}>
+          <strong>Calibration warning:</strong> {automaticCalibration.warning}
+          {" "}The analysis continued using a robust median ball diameter.
         </div>
       )}
 

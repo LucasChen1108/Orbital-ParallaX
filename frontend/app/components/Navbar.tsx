@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const STEPS = ["Upload", "Interval", "Ball", "Calibrate", "Analyse", "Results"];
+const STEPS = ["Upload", "Interval", "Calibrate", "Analyse", "Results"];
 
 interface NavbarProps {
   currentStep?: number;
