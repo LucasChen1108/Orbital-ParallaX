@@ -18,9 +18,9 @@ test.describe("Tracking method selector (Step 2 UI)", () => {
     // The method selector is in page.tsx JSX — verify it's in the source
     // by checking the radio button labels exist when step 2 is active.
     // We can't reach step 2 without a real upload, so we verify the
-    // default method state is yolo via the step 5 options display.
+    // default method state is yolo via the results display.
     await page.getByText("Skip to mock results").click();
-    await expect(page.getByText("STEP 6 OF 6")).toBeVisible();
+    await expect(page.getByText("STEP 5 OF 5")).toBeVisible();
     // Results page should show tracker mode badge
     await expect(page.getByText(/Tracker:/i)).toBeVisible();
   });
@@ -36,8 +36,8 @@ test.describe("Tracking method selector (Step 2 UI)", () => {
     await page.getByText("Skip to mock results").click();
     // Mock data has estimated_gravity_ms2, initial_velocity_ms, launch_angle_deg
     await expect(page.getByText("Gravity estimate")).toBeVisible();
-    await expect(page.getByText("Initial velocity")).toBeVisible();
-    await expect(page.getByText("Launch angle")).toBeVisible();
+    await expect(page.getByText("Initial velocity").first()).toBeVisible();
+    await expect(page.getByText("Launch angle").first()).toBeVisible();
   });
 
   test("results page shows overlay tab", async ({ page }) => {
