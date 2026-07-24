@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useIsMobile } from "../hook/useIsMobile";
 
 const STEPS = ["Upload", "Interval", "Ball", "Calibrate", "Analyse", "Results"];
 
@@ -10,25 +11,16 @@ interface NavbarProps {
   onLogoClick?: () => void;
 }
 
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, [breakpoint]);
-  return isMobile;
-}
-
 export default function Navbar({ currentStep, onLogoClick }: NavbarProps) {
   const pathname = usePathname();
   const onAnalysePage = pathname === "/analyse" || pathname === "/";
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setDrawerOpen(false);
+  }
 
   function handleLogoClick() {
     setDrawerOpen(false);
