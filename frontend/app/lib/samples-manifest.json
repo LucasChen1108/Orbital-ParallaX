@@ -5,18 +5,11 @@
     "description": "Indoor, good lighting — a clean example to start with.",
     "filename": "Test1.mov",
     "method": "yolo",
-    "frameRange": {
-      "start_frame": 0,
-      "end_frame": 29
-    },
-    "calibration": {
-      "x1": 1480,
-      "y1": 645,
-      "x2": 1465,
-      "y2": 1565,
-      "real_world_distance_m": 1.74
-    },
-    "useAirResistance": true
+    "frameRange": { "start_frame": 0, "end_frame": 29 },
+    "calibration": { "mode": "manual", "x1": 1480, "y1": 645, "x2": 1465, "y2": 1565, "real_world_distance_m": 1.74 },
+    "useAirResistance": true,
+    "intervalHintText": "REPLACE ME — describe roughly which frames capture the throw, in plain language, without giving the exact numbers.",
+    "calibrationHintText": "REPLACE ME — describe a visible object of known size in this frame the user can use as a reference, e.g. a doorframe, ruler, or the ball itself."
   },
   {
     "id": "smallball_throw",
@@ -24,17 +17,10 @@
     "description": "indoor, natural lighting — a more challenging example.",
     "filename": "Test2.mp4",
     "method": "yolo",
-    "frameRange": {
-      "start_frame": 0,
-      "end_frame": 42
-    },
-    "calibration": {
-      "x1": 535,
-      "y1": 23.333333333333336,
-      "x2": 536.6666666666667,
-      "y2": 661.6666666666667,
-      "real_world_distance_m": 1.59
-    },
-    "useAirResistance": true
+    "frameRange": { "start_frame": 0, "end_frame": 42 },
+    "calibration": { "mode": "manual", "x1": 535, "y1": 23.33, "x2": 536.67, "y2": 661.67, "real_world_distance_m": 1.59 },
+    "useAirResistance": true,
+    "intervalHintText": "REPLACE ME",
+    "calibrationHintText": "REPLACE ME"
   }
 ]
