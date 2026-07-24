@@ -7,8 +7,10 @@ export interface SampleVideo {
   videoUrl: string;
   method: "hsv" | "yolo";
   frameRange: { start_frame: number; end_frame: number };
-  calibration: { x1: number; y1: number; x2: number; y2: number; real_world_distance_m: number };
+  calibration: { mode: "manual"; x1: number; y1: number; x2: number; y2: number; real_world_distance_m: number };
   useAirResistance: boolean;
+  intervalHintText: string;
+  calibrationHintText: string;
 }
 
 interface ManifestEntry {
@@ -18,8 +20,10 @@ interface ManifestEntry {
   filename: string;
   method: "hsv" | "yolo";
   frameRange: { start_frame: number; end_frame: number };
-  calibration: { x1: number; y1: number; x2: number; y2: number; real_world_distance_m: number };
+  calibration: { mode: "manual"; x1: number; y1: number; x2: number; y2: number; real_world_distance_m: number };
   useAirResistance: boolean;
+  intervalHintText: string;
+  calibrationHintText: string;
 }
 
 export const SAMPLE_VIDEOS: SampleVideo[] = (manifest as ManifestEntry[]).map(v => ({

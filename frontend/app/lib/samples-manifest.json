@@ -5,36 +5,34 @@
     "description": "Indoor, good lighting — a clean example to start with.",
     "filename": "Test1.mov",
     "method": "yolo",
-    "frameRange": {
-      "start_frame": 0,
-      "end_frame": 29
-    },
-    "calibration": {
-      "x1": 1480,
-      "y1": 645,
-      "x2": 1465,
-      "y2": 1565,
-      "real_world_distance_m": 1.76
-    },
-    "useAirResistance": true
+    "frameRange": { "start_frame": 0, "end_frame": 29 },
+    "calibration": { "mode": "manual", "x1": 1480, "y1": 645, "x2": 1465, "y2": 1565, "real_world_distance_m": 1.74 },
+    "useAirResistance": true,
+    "intervalHintText": "We suggest selecting from frame 3 to 29",
+    "calibrationHintText": "We strongly recommend using the auto-calibration feature, and the diameter for the basketball is 0.24m."
   },
   {
-    "id": "smallball_throw",
-    "name": "Small ball throw",
-    "description": "indoor, natural lighting — a more challenging example.",
-    "filename": "Test2.mp4",
+    "id": "football_throw",
+    "name": "Football throw",
+    "description": "indoor, natural lighting with 60 fps",
+    "filename": "Test2.MOV",
     "method": "yolo",
-    "frameRange": {
-      "start_frame": 0,
-      "end_frame": 42
-    },
-    "calibration": {
-      "x1": 535,
-      "y1": 23.333333333333336,
-      "x2": 536.6666666666667,
-      "y2": 661.6666666666667,
-      "real_world_distance_m": 1.59
-    },
-    "useAirResistance": true
+    "frameRange": { "start_frame": 200, "end_frame": 260 },
+    "calibration": { "mode": "manual", "x1": 91.40625, "y1": 640.9377289377289, "x2": 91.40625, "y2": 891.3113553113553, "real_world_distance_m": 1 },
+    "useAirResistance": true,
+    "intervalHintText": "We suggest selecting from frame 200 to 260",
+    "calibrationHintText": "If u want to use auto-calibration, the diameter for the football is 0.22m. Else, if u want to use manual calibration, the length of the ruler in the video is 1 meter."
+  },
+  {
+    "id": "football_throw_2",
+    "name": "Football throw 2 (throw upwards)",
+    "description": "indoor, natural lighting with 30 fps",
+    "filename": "Test3.mov",
+    "method": "yolo",
+    "frameRange": { "start_frame": 0, "end_frame": 30 },
+    "calibration": { "mode": "manual", "x1": 91.40625, "y1": 640.9377289377289, "x2": 91.40625, "y2": 891.3113553113553, "real_world_distance_m": 1 },
+    "useAirResistance": true,
+    "intervalHintText": "We suggest selecting from frame 0 to 30, which is the entire video",
+    "calibrationHintText": "If u want to use auto-calibration, the diameter for the football is 0.22m. Else, if u want to use manual calibration, the length of the ruler in the video is 1 meter."
   }
 ]

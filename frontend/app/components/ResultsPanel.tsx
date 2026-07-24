@@ -636,11 +636,11 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         </div>
         <div style={{ position:"relative", background:"#000" }}>
           {videoTab === "original" && originalVideoUrl && (
-            <video ref={videoRef} src={originalVideoUrl} controls style={{ width:"100%", display:"block", maxHeight:"500px" }} />
+            <video ref={videoRef} src={originalVideoUrl} controls style={{ display:"block", maxWidth:"100%", maxHeight: isMobile ? "320px" : "500px", width:"auto", height:"auto", margin:"0 auto" }} />
           )}
           {videoTab === "overlay" && (
             overlayVideoUrl
-            ? <video ref={overlayVideoRef} src={overlayVideoUrl} controls style={{ width:"100%", display:"block", maxHeight:"500px" }} />
+            ? <video ref={overlayVideoRef} src={overlayVideoUrl} controls style={{ display:"block", maxWidth:"100%", maxHeight: isMobile ? "320px" : "500px", width:"auto", height:"auto", margin:"0 auto" }} />
             : <div style={{ padding:"48px", textAlign:"center", color:"#9ca3af", fontSize:"13px", background:"#f9fafb" }}>No overlay available — re-run analysis to generate one</div>
           )}
           {videoTab === "original" && (

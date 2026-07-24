@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { API_ROOT } from "../lib/api";
+import { useIsMobile } from "../hook/useIsMobile";
 
 const REAL_COLOR = "#2563a8";
 const SANDBOX_COLOR = "#7c3aed";
@@ -46,6 +47,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
   const [hover, setHover] = useState<{ xm: number; ym: number } | null>(null);
   const [panning, setPanning] = useState(false);
   const [useOverlayView, setUseOverlayView] = useState(true);
+  const isMobile = useIsMobile(640);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bgImgRef = useRef<HTMLImageElement | null>(null);
@@ -329,7 +331,17 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
       <canvas
         ref={canvasRef}
         width={W} height={H}
-        style={{ width: "100%", borderRadius: "8px", border: "1px solid #f3f4f6", cursor: isOverlayMode ? "default" : (panning ? "grabbing" : "crosshair") }}
+        style={{
+            display: "block",
+            maxWidth: "100%",
+            maxHeight: isOverlayMode ? (isMobile ? "300px" : "460px") : undefined,
+            width: "auto",
+            height: "auto",
+            margin: isOverlayMode ? "0 auto" : undefined,
+            borderRadius: "8px",
+            border: "1px solid #f3f4f6",
+            cursor: isOverlayMode ? "default" : (panning ? "grabbing" : "crosshair"),
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
