@@ -102,10 +102,15 @@ export default function LibraryPage() {
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "16px" }}>
+            <div className="library-grid">
               {SAMPLE_VIDEOS.map(video => (
                 <div key={video.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "16px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                  <video src={video.videoUrl} controls muted preload="metadata" style={{ width: "100%", display: "block", background: "#000", maxHeight: "220px" }} />
+                  <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", overflow: "hidden" }}>
+                    <video
+                      src={video.videoUrl} controls muted preload="metadata"
+                      style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                    />
+                  </div>
                   <div style={{ padding: "16px" }}>
                     <div style={{ fontSize: "15px", fontWeight: 700, marginBottom: "4px" }}>{video.name}</div>
                     <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>{video.description}</div>
@@ -161,6 +166,19 @@ export default function LibraryPage() {
             />
           </>
         )}
+
+        <style jsx>{`
+          .library-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+          }
+          @media (max-width: 640px) {
+            .library-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}</style>
       </main>
     </div>
   );

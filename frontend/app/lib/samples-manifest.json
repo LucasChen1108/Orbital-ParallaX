@@ -22,5 +22,17 @@
     "useAirResistance": true,
     "intervalHintText": "We suggest selecting from frame 200 to 260",
     "calibrationHintText": "If u want to use auto-calibration, the diameter for the football is 0.22m. Else, if u want to use manual calibration, the length of the ruler in the video is 1 meter."
+  },
+  {
+    "id": "football_throw_2",
+    "name": "Football throw 2 (throw upwards)",
+    "description": "indoor, natural lighting with 30 fps",
+    "filename": "Test3.mov",
+    "method": "yolo",
+    "frameRange": { "start_frame": 0, "end_frame": 30 },
+    "calibration": { "mode": "manual", "x1": 91.40625, "y1": 640.9377289377289, "x2": 91.40625, "y2": 891.3113553113553, "real_world_distance_m": 1 },
+    "useAirResistance": true,
+    "intervalHintText": "We suggest selecting from frame 0 to 30, which is the entire video",
+    "calibrationHintText": "If u want to use auto-calibration, the diameter for the football is 0.22m. Else, if u want to use manual calibration, the length of the ruler in the video is 1 meter."
   }
 ]
