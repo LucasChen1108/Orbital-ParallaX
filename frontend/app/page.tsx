@@ -3,13 +3,11 @@ import { useState } from "react";
 import Navbar from "./components/Navbar";
 import VideoUploader from "./components/VideoUploader";
 import IntervalSlider from "./components/IntervalSlider";
-import BallPicker from "./components/BallPicker";
 import CalibrationPicker from "./components/CalibrationPicker";
 import ResultsPanel from "./components/ResultsPanel";
 import { analyseVideo } from "./lib/api";
 import {
   UploadResponse,
-  SampleColourResponse,
   CalibrationPoints,
   PhysicsResult,
   AnalysisResponse,
@@ -19,10 +17,9 @@ import { MOCK_ANALYSIS } from "./lib/mockData";
 const STEP_META = [
   { n: 1, label: "Upload",    desc: "Drop your video file to get started." },
   { n: 2, label: "Interval",  desc: "Select the frames that contain the motion." },
-  { n: 3, label: "Ball",      desc: "Click the ball so we can track its colour." },
-  { n: 4, label: "Calibrate", desc: "Draw a line of known real-world length." },
-  { n: 5, label: "Analyse",   desc: "Run the physics engine on your clip." },
-  { n: 6, label: "Results",   desc: "Your physics output." },
+  { n: 3, label: "Calibrate", desc: "Set the real-world scale automatically or manually." },
+  { n: 4, label: "Analyse",   desc: "Run the physics engine on your clip." },
+  { n: 5, label: "Results",   desc: "Your physics output." },
 ];
 
 // Colour tokens
@@ -35,7 +32,6 @@ export default function Home() {
   const [uploadData, setUploadData]   = useState<UploadResponse | null>(null);
   const [startFrame, setStartFrame]   = useState(0);
   const [endFrame, setEndFrame]       = useState(0);
-  const [colourData, setColourData]   = useState<SampleColourResponse | null>(null);
   const [calibration, setCalibration] = useState<CalibrationPoints | null>(null);
   const [result, setResult]           = useState<PhysicsResult | null>(null);
   const [analysing, setAnalysing]     = useState(false);
@@ -48,7 +44,7 @@ export default function Home() {
   function loadMockResults() {
     if (MOCK_ANALYSIS.result) {
       setResult(MOCK_ANALYSIS.result);
-      setStep(6);
+      setStep(5);
     }
   }
 
@@ -59,31 +55,41 @@ export default function Home() {
   }
 
   function handleConfirmInterval() {
-    if (method === "yolo") { setColourData(null); setStep(4); }
-    else setStep(3);
-  }
-
-  function handleColourSampled(data: SampleColourResponse) {
-    setColourData(data); setStep(4);
+    setStep(3);
   }
 
   function handleCalibrated(data: CalibrationPoints) {
-    setCalibration(data); setStep(5);
+    setCalibration(data); setStep(4);
   }
 
   function handleBack() {
-    if (step === 4 && method === "yolo") setStep(2);
-    else setStep(s => s - 1);
+    setStep(s => s - 1);
   }
 
   function resetFlow() {
     setStep(1); setResult(null); setUploadData(null);
-    setColourData(null); setCalibration(null);
+    setCalibration(null);
     setAnalysis(null); setMethod("yolo");
   }
 
   function copySampleConfig() {
     if (!calibration) return;
+    const calibrationConfig = calibration.mode === "ball_diameter"
+      ? {
+          mode: calibration.mode,
+          ball_diameter_m: calibration.ball_diameter_m,
+          px_per_metre: calibration.px_per_metre,
+          quality: calibration.quality,
+          variation_cv_pct: calibration.variation_cv_pct,
+          warning: calibration.warning,
+          warning_accepted: calibration.warning_accepted,
+        }
+      : {
+          mode: "manual" as const,
+          x1: calibration.x1, y1: calibration.y1,
+          x2: calibration.x2, y2: calibration.y2,
+          real_world_distance_m: calibration.real_world_distance_m,
+        };
     const snippet = {
       id: "REPLACE-ME",
       name: "REPLACE ME",
@@ -91,11 +97,7 @@ export default function Home() {
       filename: uploadData?.filename ?? "REPLACE-ME.mp4",
       method,
       frameRange: { start_frame: startFrame, end_frame: endFrame },
-      calibration: {
-        x1: calibration.x1, y1: calibration.y1,
-        x2: calibration.x2, y2: calibration.y2,
-        real_world_distance_m: calibration.real_world_distance_m,
-      },
+      calibration: calibrationConfig,
       useAirResistance,
     };
     navigator.clipboard.writeText(JSON.stringify(snippet, null, 2));
@@ -105,20 +107,19 @@ export default function Home() {
 
   async function handleAnalyse() {
     if (!uploadData || !calibration) return;
-    if (method === "hsv" && !colourData) return;
     setAnalysing(true); setError(null);
     try {
       const res = await analyseVideo(
         uploadData.video_id,
         { start_frame: startFrame, end_frame: endFrame },
         calibration,
-        colourData?.hsv_lower ?? [],
-        colourData?.hsv_upper ?? [],
+        [],
+        [],
         useAirResistance,
         method,
       );
       if (res.status === "success" && res.result) {
-        setResult(res.result); setAnalysis(res); setStep(6);
+        setResult(res.result); setAnalysis(res); setStep(5);
       } else {
         setError(res.error ?? "Analysis failed.");
       }
@@ -135,12 +136,12 @@ export default function Home() {
     <div style={{ minHeight: "100vh", background: "#f8f9fa", color: "#111827", fontFamily: "system-ui, sans-serif" }}>
       <Navbar currentStep={step} onLogoClick={resetFlow} />
 
-      <main style={{ maxWidth: step === 6 ? "1440px" : "900px", margin: "0 auto", padding: "40px 2rem", transition: "max-width 0.25s ease" }}>
+      <main style={{ maxWidth: step === 5 ? "1440px" : "900px", margin: "0 auto", padding: "40px 2rem", transition: "max-width 0.25s ease" }}>
 
         {/* Step header */}
         <div style={{ marginBottom: "28px" }}>
           <div style={{ fontSize: "11px", color: G, letterSpacing: "0.1em", fontWeight: 600, marginBottom: "6px" }}>
-            STEP {meta.n} OF 6
+            STEP {meta.n} OF 5
           </div>
           <h1 style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "6px", color: "#111827" }}>
             {meta.label}
@@ -217,29 +218,20 @@ export default function Home() {
           )}
 
           {/* Step 3 */}
-          {step === 3 && method === "hsv" && uploadData && (
-            <BallPicker
+          {step === 3 && uploadData && (
+            <CalibrationPicker
               videoId={uploadData.video_id}
-              frameIndex={startFrame}
+              startFrame={startFrame}
+              endFrame={endFrame}
               videoWidth={uploadData.width}
               videoHeight={uploadData.height}
-              onSampled={handleColourSampled}
+              onCalibrated={handleCalibrated}
+              onAdjustInterval={() => setStep(2)}
             />
           )}
 
           {/* Step 4 */}
-          {step === 4 && uploadData && (
-            <CalibrationPicker
-              videoId={uploadData.video_id}
-              frameIndex={startFrame}
-              videoWidth={uploadData.width}
-              videoHeight={uploadData.height}
-              onCalibrated={handleCalibrated}
-            />
-          )}
-
-          {/* Step 5 */}
-          {step === 5 && (
+          {step === 4 && (
             <div>
               <div style={{
                 background: "#f8f9fa", border: "1px solid #e5e7eb",
@@ -299,8 +291,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Step 6 */}
-          {step === 6 && result && (
+          {/* Step 5 */}
+          {step === 5 && result && (
             <>
               <ResultsPanel
                 result={result}
@@ -325,7 +317,7 @@ export default function Home() {
         </div>
 
         {/* Back */}
-        {step > 1 && step < 6 && (
+        {step > 1 && step < 5 && (
           <button onClick={handleBack} style={{
             background: "transparent", border: "none", color: "#9ca3af",
             fontSize: "13px", cursor: "pointer", padding: 0,
@@ -335,7 +327,7 @@ export default function Home() {
         )}
 
         {/* New analysis */}
-        {step === 6 && (
+        {step === 5 && (
           <button
             onClick={resetFlow}
             style={{

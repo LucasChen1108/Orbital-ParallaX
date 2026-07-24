@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from .hsv  import sample_ball_colour, track_hsv
-from .yolo import track_yolo
+from .yolo import track_yolo, track_yolo_detailed
 
 
 def track_ball(
@@ -28,4 +28,7 @@ def track_ball(
     return track_hsv(video_path, start_frame, end_frame, hsv_lower, hsv_upper)
 
 
-__all__ = ["sample_ball_colour", "track_ball", "track_hsv", "track_yolo"]
+__all__ = [
+    "sample_ball_colour", "track_ball", "track_hsv",
+    "track_yolo", "track_yolo_detailed",
+]

@@ -60,6 +60,33 @@ def test_track_yolo_returns_centre_tuples(monkeypatch, synthetic_ball_video):
         assert (cx, cy) == (20.0, 30.0)   # centre of bbox [10, 20, 30, 40]
 
 
+def test_track_yolo_detailed_keeps_box_size_and_confidence(monkeypatch, synthetic_ball_video):
+    class FakeBoxes:
+        conf = np.array([0.85])
+
+        def __len__(self):
+            return 1
+
+        def __getitem__(self, i):
+            box = type("Box", (), {})()
+            box.xyxy = np.array([[10.0, 20.0, 34.0, 42.0]])
+            return box
+
+    class FakeResult:
+        boxes = FakeBoxes()
+
+    class FakeModel:
+        def __call__(self, frame, **kwargs):
+            return [FakeResult()]
+
+    monkeypatch.setattr(yolo_mod, "_get_model", lambda: FakeModel())
+    detections = yolo_mod.track_yolo_detailed(synthetic_ball_video, 0, 2)
+    assert detections
+    assert detections[0]["width_px"] == 24.0
+    assert detections[0]["height_px"] == 22.0
+    assert detections[0]["confidence"] == pytest.approx(0.85)
+
+
 # ── HSV tracker (regression on synthetic clip) ────────────────────────────────
 
 def test_track_hsv_detects_green_ball(synthetic_ball_video):
