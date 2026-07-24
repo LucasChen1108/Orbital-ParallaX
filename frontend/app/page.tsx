@@ -135,7 +135,7 @@ export default function Home() {
     <div style={{ minHeight: "100vh", background: "#f8f9fa", color: "#111827", fontFamily: "system-ui, sans-serif" }}>
       <Navbar currentStep={step} onLogoClick={resetFlow} />
 
-      <main style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 2rem" }}>
+      <main style={{ maxWidth: step === 6 ? "1440px" : "900px", margin: "0 auto", padding: "40px 2rem", transition: "max-width 0.25s ease" }}>
 
         {/* Step header */}
         <div style={{ marginBottom: "28px" }}>

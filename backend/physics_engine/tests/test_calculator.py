@@ -1,6 +1,13 @@
+import numpy as np
 import pytest
 
-from solver.calculator import compute_px_per_metre, compute_physics, _safe_window
+from solver.calculator import (
+    _safe_window,
+    _solve_drag_trajectory,
+    compute_physics,
+    compute_physics_with_drag,
+    compute_px_per_metre,
+)
 
 
 # ── calibration ───────────────────────────────────────────────────────────────
@@ -78,3 +85,98 @@ def test_compute_physics_list_lengths_match():
 def test_compute_physics_too_few_frames():
     with pytest.raises(ValueError, match="at least 5"):
         compute_physics([(i, 100.0, 100.0) for i in range(3)], 30.0, 100.0)
+
+
+# ── bounded drag fit and bootstrap uncertainty ────────────────────────────────
+
+def _make_drag_detections(
+    n=36,
+    fps=30.0,
+    px_per_metre=100.0,
+    missing_frames=(),
+    noise_px=0.0,
+    seed=7,
+):
+    frames = np.array([i for i in range(n) if i not in set(missing_frames)])
+    timestamps = frames / fps
+    states = _solve_drag_trajectory(
+        timestamps,
+        x0=2.0,
+        y0=-1.0,
+        g=9.81,
+        drag_coeff=0.04,
+        vx0=8.0,
+        vy0=7.0,
+    )
+    rng = np.random.default_rng(seed)
+    x_px = states[0] * px_per_metre
+    y_px = -states[1] * px_per_metre
+    if noise_px:
+        x_px += rng.normal(0.0, noise_px, len(frames))
+        y_px += rng.normal(0.0, noise_px, len(frames))
+    return [
+        (int(frame), float(x), float(y))
+        for frame, x, y in zip(frames, x_px, y_px)
+    ]
+
+
+def test_drag_point_estimate_recovers_synthetic_parameters():
+    result = compute_physics_with_drag(
+        _make_drag_detections(), 30.0, 100.0,
+        bootstrap_samples=0,
+    )
+    assert result["fit_quality"]["converged"] is True
+    assert abs(result["estimated_gravity_ms2"] - 9.81) < 0.8
+    assert abs(result["drag_coefficient"] - 0.04) < 0.03
+    assert abs(result["initial_velocity_ms"] - np.hypot(8.0, 7.0)) < 0.8
+
+
+def test_drag_bootstrap_returns_95_percent_intervals():
+    result = compute_physics_with_drag(
+        _make_drag_detections(noise_px=0.4), 30.0, 100.0,
+        bootstrap_samples=20,
+        random_seed=123,
+    )
+    intervals = result["confidence_intervals"]
+    assert set(intervals) == {
+        "estimated_gravity_ms2",
+        "drag_coefficient",
+        "initial_velocity_ms",
+        "launch_angle_deg",
+    }
+    assert all(ci["lower"] <= ci["upper"] for ci in intervals.values())
+    assert result["fit_quality"]["successful_bootstraps"] >= 10
+
+
+def test_drag_fit_handles_missing_tracking_frames():
+    result = compute_physics_with_drag(
+        _make_drag_detections(missing_frames=(4, 9, 10, 21, 28)),
+        30.0,
+        100.0,
+        bootstrap_samples=0,
+    )
+    assert result["fit_quality"]["converged"] is True
+    assert len(result["timestamps"]) == 31
+    assert abs(result["estimated_gravity_ms2"] - 9.81) < 1.0
+
+
+def test_drag_fit_handles_noisy_tracking_data():
+    result = compute_physics_with_drag(
+        _make_drag_detections(noise_px=1.0),
+        30.0,
+        100.0,
+        bootstrap_samples=0,
+    )
+    assert result["fit_quality"]["converged"] is True
+    assert result["fit_quality"]["rmse_m"] < 0.1
+    assert 5.0 <= result["estimated_gravity_ms2"] <= 15.0
+
+
+def test_drag_fit_rejects_short_video():
+    with pytest.raises(ValueError, match="at least 8"):
+        compute_physics_with_drag(
+            _make_drag_detections(n=7),
+            30.0,
+            100.0,
+            bootstrap_samples=0,
+        )

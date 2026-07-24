@@ -42,6 +42,21 @@ export interface PhysicsResult {
     x_positions_m: number[];
     y_positions_m: number[];
   };
+  confidence_intervals?: Record<string, {
+    lower: number;
+    upper: number;
+  }>;
+  fit_quality?: {
+    converged: boolean;
+    message: string;
+    rmse_m: number;
+    r_squared: number;
+    cost: number;
+    optimality: number;
+    function_evaluations: number;
+    bootstrap_samples: number;
+    successful_bootstraps: number;
+  };
 }
 export interface AnalysisRequest {
   video_id: string;
