@@ -59,6 +59,9 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
 
   const x0 = realTrajectory?.x_positions_m?.[0] ?? 0;
   const y0 = realTrajectory?.y_positions_m?.[0] ?? 0;
+  const yEnd = realTrajectory?.y_positions_m?.length
+    ? realTrajectory.y_positions_m[realTrajectory.y_positions_m.length - 1]
+    : undefined;
 
   const W = 700;
   const H = isOverlayMode && overlay ? Math.round(W * (overlay.videoHeightPx / overlay.videoWidthPx)) : ABSTRACT_H;
@@ -101,7 +104,7 @@ export default function SandboxTrajectory({ realTrajectory, initialParams, overl
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             v0: params.v0, angle_deg: params.angleDeg, g: params.g,
-            drag_coeff: params.dragCoeff, x0, y0,
+            drag_coeff: params.dragCoeff, x0, y0, y_end: yEnd,
           }),
         });
         if (!res.ok) throw new Error(`Prediction failed (${res.status})`);
