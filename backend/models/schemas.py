@@ -104,6 +104,7 @@ class SandboxRequest(BaseModel):
     drag_coeff: float = Field(0.0, ge=0, le=1)
     x0: float = 0.0
     y0: float = 0.0
+    y_end: Optional[float] = None
 
 
 class SandboxResponse(BaseModel):

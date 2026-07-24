@@ -7,6 +7,7 @@ Stateless functions, easy to unit test.
 
 import math
 import os
+from typing import Optional
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import least_squares
@@ -417,21 +418,37 @@ def simulate_trajectory(
     drag_coeff: float = 0.0,
     x0: float = 0.0,
     y0: float = 0.0,
+    y_end: Optional[float] = None,
     dt: float = 0.01,
     max_t: float = 10.0,
 ) -> dict:
     """
-    Simulates a full projectile flight from launch to landing, given only
-    launch conditions — unlike predict_trajectory(), which requires a
-    pre-built timestamps array to overlay onto an existing real trajectory.
+    Simulates a full projectile flight from launch until it reaches y_end,
+    given only launch conditions — unlike predict_trajectory(), which
+    requires a pre-built timestamps array to overlay onto an existing real
+    trajectory.
 
     Used by Sandbox Mode: user picks v0/angle/g/drag via sliders, this
     figures out the flight on its own and returns it for plotting, either
     standalone or alongside a real tracked trajectory.
 
-    Stops when the ball returns to y0 (landing) or max_t is reached
-    (safety cap for edge cases like g very close to 0).
+    y_end: height at which to stop the flight. Defaults to y0 (lands back
+    at launch height) when not given — this is standalone Sandbox Mode's
+    behaviour, with nothing else to compare against. When overlaid on a
+    real trajectory, the frontend passes that trajectory's LAST tracked
+    y-position instead, so the sandbox curve's endpoint lines up with
+    where the real footage actually stopped, rather than assuming it
+    returned to launch height.
+
+    The landing check only takes effect once the ball is past its peak
+    (vy < 0) — this avoids stopping instantly at launch in the edge case
+    where y_end happens to equal y0.
+
+    max_t is a safety cap for edge cases like g very close to 0.
     """
+    if y_end is None:
+        y_end = y0
+
     angle_rad = math.radians(angle_deg)
     vx = v0 * math.cos(angle_rad)
     vy = v0 * math.sin(angle_rad)
@@ -455,7 +472,7 @@ def simulate_trajectory(
         xs.append(round(x, 4))
         ys.append(round(y, 4))
 
-        if y < y0:
+        if vy < 0 and y <= y_end:
             break
 
     return {"timestamps": timestamps, "x_positions_m": xs, "y_positions_m": ys}

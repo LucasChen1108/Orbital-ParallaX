@@ -209,7 +209,8 @@ def predict_sandbox_trajectory(req: SandboxRequest):
     """
     Sandbox Mode: given launch conditions, simulate a full trajectory.
     No video_id required — pure physics, works standalone or anchored
-    to a real analysis (frontend passes x0/y0 to match a real trajectory).
+    to a real analysis (frontend passes x0/y0/y_end to match a real
+    trajectory's start and end points).
     """
     data = simulate_trajectory(
         v0=req.v0,
@@ -218,6 +219,7 @@ def predict_sandbox_trajectory(req: SandboxRequest):
         drag_coeff=req.drag_coeff,
         x0=req.x0,
         y0=req.y0,
+        y_end=req.y_end,
     )
     return SandboxResponse(**data)
 
