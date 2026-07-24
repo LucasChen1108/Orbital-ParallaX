@@ -138,7 +138,7 @@ export default function CalibrationPicker({
         Choose how ArcLab should convert pixels into real-world distance.
       </p>
 
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px", marginBottom:"24px" }}>
+      <div className="mode-grid">
         <ModeCard
           selected={mode === "automatic"}
           title="Automatic — Ball diameter"
@@ -160,7 +160,7 @@ export default function CalibrationPicker({
             <label style={{ display:"block", fontSize:"13px", fontWeight:600, color:"#25324a", marginBottom:"8px" }}>
               Ball diameter
             </label>
-            <div style={{ display:"flex", gap:"10px", alignItems:"center", flexWrap:"wrap" }}>
+            <div className="diameter-scan-row">
               <div style={{ display:"flex", alignItems:"center", background:"#fff", border:"1px solid #cbd5e1", borderRadius:"9px", overflow:"hidden" }}>
                 <input
                   type="number" inputMode="decimal" min="0.001" step="0.001" value={diameterM}
@@ -173,6 +173,7 @@ export default function CalibrationPicker({
               <button
                 onClick={handleAutoScan}
                 disabled={scanning || !diameterM}
+                className="scan-button"
                 style={primaryButtonStyle(scanning || !diameterM)}
               >
                 {scanning ? "Detecting ball…" : "Detect ball and calibrate"}
@@ -245,6 +246,33 @@ export default function CalibrationPicker({
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .mode-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+        .diameter-scan-row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 560px) {
+          .mode-grid {
+            grid-template-columns: 1fr;
+          }
+          .diameter-scan-row {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .scan-button {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -259,9 +287,9 @@ function ModeCard({ selected, title, description, badge, onClick }: {
       background:selected ? "#eff6ff" : "#fff",
       boxShadow:selected ? "0 4px 14px rgba(37,99,168,0.08)" : "none",
     }}>
-      <div style={{ display:"flex", justifyContent:"space-between", gap:"8px", marginBottom:"7px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", gap:"8px", flexWrap:"wrap", marginBottom:"7px" }}>
         <span style={{ fontSize:"14px", fontWeight:700, color:selected ? G : "#1f2937" }}>{title}</span>
-        {badge && <span style={{ fontSize:"10px", padding:"3px 7px", borderRadius:"10px", background:"#dbeafe", color:G }}>{badge}</span>}
+        {badge && <span style={{ fontSize:"10px", padding:"3px 7px", borderRadius:"10px", background:"#dbeafe", color:G, whiteSpace:"nowrap" }}>{badge}</span>}
       </div>
       <span style={{ display:"block", fontSize:"12px", lineHeight:1.5, color:"#64748b" }}>{description}</span>
     </button>
