@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Navigation", () => {
   test("home page loads and shows step 1", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("STEP 1 OF 6")).toBeVisible();
+    await expect(page.getByText("STEP 1 OF 5")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
   });
 
@@ -69,10 +69,10 @@ test.describe("Upload step UI", () => {
 });
 
 test.describe("Step progression with mock data", () => {
-  test("mock results jumps to step 6", async ({ page }) => {
+  test("mock results jumps to step 5", async ({ page }) => {
     await page.goto("/");
     await page.getByText("Skip to mock results").click();
-    await expect(page.getByText("STEP 6 OF 6")).toBeVisible();
+    await expect(page.getByText("STEP 5 OF 5")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Results" })).toBeVisible();
   });
 

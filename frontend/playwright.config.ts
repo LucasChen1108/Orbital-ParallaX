@@ -15,7 +15,12 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // Developers can reuse an installed Chrome; CI installs the pinned
+        // Playwright Chromium build in the workflow.
+        channel: process.env.CI ? undefined : "chrome",
+      },
     },
   ],
   // Auto-start dev server before tests

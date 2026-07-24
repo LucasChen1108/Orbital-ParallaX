@@ -442,6 +442,12 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
   const currentNetV = netVelocities[currentFrameIdx]?.toFixed(3) ?? "—";
   const detectionSet    = new Set((analysis?.detections ?? []).map(([f]) => f));
   const currentDetected = detectionSet.has(currentAbsFrame);
+  const trajectoryAriaLabel = hoverPoint
+    ? `Trajectory chart, frame ${frameStart + hoverPoint.idx}, ` +
+      `time ${result.timestamps[hoverPoint.idx]?.toFixed(3)} seconds, ` +
+      `x ${xs[hoverPoint.idx]?.toFixed(3)} metres, ` +
+      `y ${ys[hoverPoint.idx]?.toFixed(3)} metres. Click to seek video.`
+    : "Trajectory chart. Hover over a tracked point for frame data and click to seek the video.";
 
   // CSV export
   function handleExportCSV() {
@@ -667,7 +673,7 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         {videoTab === "original" && (
           <div style={{ padding:"14px", borderTop:"1px solid #e5e7eb", background:"#f9fafb" }}>
             <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"8px" }}>
-              <span style={{ fontSize:"11px", fontFamily:"monospace", color:"#6b7280" }}>frame {currentAbsFrame} / {frameEnd}</span>
+              <span data-testid="current-frame" style={{ fontSize:"11px", fontFamily:"monospace", color:"#6b7280" }}>frame {currentAbsFrame} / {frameEnd}</span>
               <span style={{ fontSize:"11px", color:"#9ca3af" }}>t = {result.timestamps[currentFrameIdx]?.toFixed(3) ?? "—"} s</span>
             </div>
             <div style={{ display:"flex", gap:"6px", alignItems:"center", flexWrap:"wrap", marginBottom:"10px" }}>
@@ -715,6 +721,9 @@ export default function ResultsPanel({ result, analysis, uploadData, calibration
         </div>
         <canvas
           ref={trajectoryCanvasRef}
+          data-testid="trajectory-canvas"
+          role="img"
+          aria-label={trajectoryAriaLabel}
           width={W} height={H}
           style={{ width:"100%", borderRadius:"8px", border:"1px solid #f3f4f6", cursor: hoverPoint?"pointer":panning?"grabbing":"crosshair" }}
           onMouseMove={handleCanvasMouseMove}
@@ -842,7 +851,12 @@ function LegendLine({ color, label, dashed }: { color: string; label: string; da
 
 function Toggle({ label, value, onChange, disabled }: { label: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <button onClick={() => !disabled && onChange(!value)} style={{ display:"flex", alignItems:"center", gap:"8px",
+    <button
+      onClick={() => !disabled && onChange(!value)}
+      aria-label={label}
+      aria-pressed={value}
+      disabled={disabled}
+      style={{ display:"flex", alignItems:"center", gap:"8px",
       background: value ? GLIGHT : "#f9fafb",
       border: `1px solid ${value ? GBORDER : "#e5e7eb"}`,
       borderRadius:"8px", padding:"7px 14px", cursor:disabled?"not-allowed":"pointer", opacity:disabled?0.4:1 }}>

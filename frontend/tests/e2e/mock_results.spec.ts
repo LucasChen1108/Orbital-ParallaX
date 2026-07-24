@@ -9,8 +9,8 @@ test.describe("Results page (mock data)", () => {
 
   test("shows all physics metric cards", async ({ page }) => {
     await expect(page.getByText("Gravity estimate")).toBeVisible();
-    await expect(page.getByText("Initial velocity")).toBeVisible();
-    await expect(page.getByText("Launch angle")).toBeVisible();
+    await expect(page.getByText("Initial velocity").first()).toBeVisible();
+    await expect(page.getByText("Launch angle").first()).toBeVisible();
     await expect(page.getByText("Frames analysed")).toBeVisible();
   });
 
@@ -71,7 +71,7 @@ test.describe("Results page (mock data)", () => {
 
   test("start new analysis button resets to step 1", async ({ page }) => {
     await page.getByText("↺ Start new analysis").click();
-    await expect(page.getByText("STEP 1 OF 6")).toBeVisible();
+    await expect(page.getByText("STEP 1 OF 5")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
   });
 });
